@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestão de Férias | RH Analytics</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+        * { font-family: 'Inter', sans-serif; }
+        body { background: #f0f2f5; }
+        .card { background: white; border-radius: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04); transition: all 0.3s ease; border: 1px solid #e5e7eb; }
+        .card:hover { box-shadow: 0 10px 25px rgba(0,0,0,0.08); transform: translateY(-2px); }
+        .kpi-card { position: relative; overflow: hidden; }
+        .kpi-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 4px; }
+        .kpi-blue::before { background: linear-gradient(90deg, #2563eb, #3b82f6); }
+        .kpi-green::before { background: linear-gradient(90deg, #10b981, #34d399); }
+        .kpi-red::before { background: linear-gradient(90deg, #ef4444, #f87171); }
+        .kpi-yellow::before { background: linear-gradient(90deg, #f59e0b, #fbbf24); }
+        .nav-link { transition: all 0.2s ease; }
+        .nav-link:hover { background: rgba(255,255,255,0.15); }
+        .nav-link.active { background: rgba(255,255,255,0.2); border-bottom: 2px solid white; }
+        .alert-badge { animation: pulse 2s infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 3px; }
+        .cal-day { width: 36px; height: 36px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 12px; transition: all 0.2s; cursor: pointer; }
+        .cal-day:hover { transform: scale(1.15); }
+        .cal-today { border: 2px solid #2563eb; font-weight: 700; }
+        .cal-vacation { background: #dbeafe; color: #1e40af; font-weight: 600; }
+        .cal-high { background: #fecaca; color: #991b1b; font-weight: 600; }
+        .cal-medium { background: #fef3c7; color: #92400e; font-weight: 600; }
+        .table-row:hover { background: #f9fafb; }
+        .sort-btn { cursor: pointer; user-select: none; }
+        .sort-btn:hover { color: #2563eb; }
+    </style>
+</head>
+<body class="min-h-screen">
+    <header class="bg-gradient-to-r from-blue-700 via-blue-600 to-blue-500 text-white shadow-lg">
+        <div class="max-w-[1440px] mx-auto px-6 py-4">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-sm"><span class="text-xl">🏖️</span></div>
+                    <div>
+                        <h1 class="text-xl font-bold tracking-tight">Gestão de Férias</h1>
+                        <p class="text-blue-100 text-xs">Controle de Períodos e Provisões</p>
+                    </div>
+                </div>
+                <div class="text-right">
+                    <p class="text-sm font-medium" id="currentDate"></p>
+                    <p class="text-blue-200 text-xs">Última atualização: <span id="updateTime"></span></p>
+                </div>
+            </div>
+        </div>
+        <nav class="max-w-[1440px] mx-auto px-6">
+            <div class="flex gap-1 overflow-x-auto pb-0">
+                <a href="dashboard-executivo.html" class="nav-link px-4 py-2.5 text-sm font-medium rounded-t-lg whitespace-nowrap">📊 Executivo</a>
+                <a href="dashboard-ponto.html" class="nav-link px-4 py-2.5 text-sm font-medium rounded-t-lg whitespace-nowrap">⏰ Ponto</a>
+                <a href="dashboard-ferias.html" class="nav-link active px-4 py-2.5 text-sm font-medium rounded-t-lg whitespace-nowrap">🏖️ Férias</a>
+                <a href="dashboard-turnover.html" class="nav-link px-4 py-2.5 text-sm font-medium rounded-t-lg whitespace-nowrap">🔄 Turnover</a>
+                <a href="dashboard-compliance.html" class="nav-link px-4 py-2.5 text-sm font-medium rounded-t-lg whitespace-nowrap">⚖️ Compliance</a>
+                <a href="dashboard-custos.html" class="nav-link px-4 py-2.5 text-sm font-medium rounded-t-lg whitespace-nowrap">💰 Custos</a>
+                <a href="dashboard-treinamento.html" class="nav-link px-4 py-2.5 text-sm font-medium rounded-t-lg whitespace-nowrap">📚 Treinamento</a>
+            </div>
+        </nav>
+    </header>
+
+    <main class="max-w-[1440px] mx-auto px-6 py-6">
+        <!-- KPIs -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-6">
+            <div class="card kpi-card kpi-red p-5">
+                <div class="flex items-start justify-between">
+                    <div>
+                        <p class="text-sm text-gray-500 font-medium">Férias Vencidas</p>
+                        <p class="text-3xl font-extrabold text-gray-900 mt-1">47</p>
+                        <div class="flex items-center gap-1 mt-2">
+                            <span class="text-red-500 text-sm font-semibold">▲ 8</span>
+                            <span class="text-gray-400 text-xs">vs mês anterior</span>
+                        </div>
+                    </div>
+                    <div class="w-12 h-12 bg-red-50 rounded-xl flex items-center justify-center"><span class="text-2xl">🚨</span></div>
+                </div>
+            </div>
+            <div class="card kpi-card kpi-yellow p-5">
+                <div class="flex items-start justify-between">
+                    <div>
+                        <p class="text-sm text-gray-500 font-medium">A Vencer em 30 dias</p>
+                        <p class="text-3xl font-extrabold text-gray-900 mt-1">123</p>
+                        <div class="flex items-center gap-1 mt-2">
+                            <span class="text-red-500 text-sm font-semibold">▲ 15</span>
+                            <span class="text-gray-400 text-xs">vs mês anterior</span>
+                        </div>
+                    </div>
+                    <div class="w-12 h-12 bg-yellow-50 rounded-xl flex items-center justify-center"><span class="text-2xl">⚠️</span></div>
+                </div>
+            </div>
+            <div class="card kpi-card kpi-blue p-5">
+                <div class="flex items-start justify-between">
+                    <div>
+                        <p class="text-sm text-gray-500 font-medium">Provisão Acumulada</p>
+                        <p class="text-3xl font-extrabold text-gray-900 mt-1">R$ 2,3M</p>
+                        <div class="flex items-center gap-1 mt-2">
+                            <span class="text-red-500 text-sm font-semibold">▲ 4.2%</span>
+                            <span class="text-gray-400 text-xs">vs mês anterior</span>
+                        </div>
+                    </div>
+                    <div class="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center"><span class="text-2xl">💰</span></div>
+                </div>
+            </div>
+            <div class="card kpi-card kpi-green p-5">
+                <div class="flex items-start justify-between">
+                    <div>
+                        <p class="text-sm text-gray-500 font-medium">Férias Programadas</p>
+                        <p class="text-3xl font-extrabold text-gray-900 mt-1">87%</p>
+                        <div class="flex items-center gap-1 mt-2">
+                            <span class="text-green-500 text-sm font-semibold">▲ 3%</span>
+                            <span class="text-gray-400 text-xs">vs mês anterior</span>
+                        </div>
+                    </div>
+                    <div class="w-12 h-12 bg-green-50 rounded-xl flex items-center justify-center"><span class="text-2xl">📅</span></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Calendário + Custos -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-5 mb-6">
+            <!-- Calendar -->
+            <div class="card p-5 lg:col-span-1">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-base font-bold text-gray-800">📅 Calendário de Férias</h3>
+                    <div class="flex gap-1">
+                        <button onclick="changeMonth(-1)" class="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-gray-100 text-gray-500">◀</button>
+                        <button onclick="changeMonth(1)" class="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-gray-100 text-gray-500">▶</button>
+                    </div>
+                </div>
+                <p class="text-sm font-semibold text-gray-700 text-center mb-3" id="calendarTitle"></p>
+                <div class="grid grid-cols-7 gap-1 mb-1">
+                    <div class="text-center text-xs font-semibold text-gray-400 py-1">D</div>
+                    <div class="text-center text-xs font-semibold text-gray-400 py-1">S</div>
+                    <div class="text-center text-xs font-semibold text-gray-400 py-1">T</div>
+                    <div class="text-center text-xs font-semibold text-gray-400 py-1">Q</div>
+                    <div class="text-center text-xs font-semibold text-gray-400 py-1">Q</div>
+                    <div class="text-center text-xs font-semibold text-gray-400 py-1">S</div>
+                    <div class="text-center text-xs font-semibold text-gray-400 py-1">S</div>
+                </div>
+                <div id="calendarGrid" class="grid grid-cols-7 gap-1"></div>
+                <div class="mt-4 flex items-center justify-center gap-3 flex-wrap">
+                    <div class="flex items-center gap-1.5"><div class="w-3 h-3 rounded-sm bg-blue-100"></div><span class="text-xs text-gray-500">Férias</span></div>
+                    <div class="flex items-center gap-1.5"><div class="w-3 h-3 rounded-sm bg-red-200"></div><span class="text-xs text-gray-500">Alto volume</span></div>
+                    <div class="flex items-center gap-1.5"><div class="w-3 h-3 rounded-sm bg-yellow-200"></div><span class="text-xs text-gray-500">Médio</span></div>
+                </div>
+
+                <!-- Heat Map Mensal -->
+                <div class="mt-6">
+                    <h4 class="text-sm font-bold text-gray-700 mb-3">🔥 Volume por Mês (2025)</h4>
+                    <div class="grid grid-cols-6 gap-1.5">
+                        <div class="text-center p-2 rounded-lg bg-blue-50"><p class="text-xs font-bold text-blue-800">Jan</p><p class="text-lg font-extrabold text-blue-600">342</p></div>
+                        <div class="text-center p-2 rounded-lg bg-yellow-50"><p class="text-xs font-bold text-yellow-800">Fev</p><p class="text-lg font-extrabold text-yellow-600">287</p></div>
+                        <div class="text-center p-2 rounded-lg bg-green-50"><p class="text-xs font-bold text-green-800">Mar</p><p class="text-lg font-extrabold text-green-600">198</p></div>
+                        <div class="text-center p-2 rounded-lg bg-green-50"><p class="text-xs font-bold text-green-800">Abr</p><p class="text-lg font-extrabold text-green-600">167</p></div>
+                        <div class="text-center p-2 rounded-lg bg-green-50"><p class="text-xs font-bold text-green-800">Mai</p><p class="text-lg font-extrabold text-green-600">145</p></div>
+                        <div class="text-center p-2 rounded-lg bg-yellow-50"><p class="text-xs font-bold text-yellow-800">Jun</p><p class="text-lg font-extrabold text-yellow-600">256</p></div>
+                        <div class="text-center p-2 rounded-lg bg-red-50"><p class="text-xs font-bold text-red-800">Jul</p><p class="text-lg font-extrabold text-red-600">478</p></div>
+                        <div class="text-center p-2 rounded-lg bg-yellow-50"><p class="text-xs font-bold text-yellow-800">Ago</p><p class="text-lg font-extrabold text-yellow-600">312</p></div>
+                        <div class="text-center p-2 rounded-lg bg-green-50"><p class="text-xs font-bold text-green-800">Set</p><p class="text-lg font-extrabold text-green-600">189</p></div>
+                        <div class="text-center p-2 rounded-lg bg-green-50"><p class="text-xs font-bold text-green-800">Out</p><p class="text-lg font-extrabold text-green-600">156</p></div>
+                        <div class="text-center p-2 rounded-lg bg-yellow-50"><p class="text-xs font-bold text-yellow-800">Nov</p><p class="text-lg font-extrabold text-yellow-600">234</p></div>
+                        <div class="text-center p-2 rounded-lg bg-red-50"><p class="text-xs font-bold text-red-800">Dez</p><p class="text-lg font-extrabold text-red-600">523</p></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Projeção Custos + Gráfico -->
+            <div class="lg:col-span-2 grid grid-rows-2 gap-5">
+                <div class="card p-5">
+                    <h3 class="text-base font-bold text-gray-800 mb-4">💰 Projeção de Custos com Férias — 6 meses</h3>
+                    <div style="height: 220px;">
+                        <canvas id="custosFeriasChart"></canvas>
+                    </div>
+                </div>
+                <div class="card p-5">
+                    <h3 class="text-base font-bold text-gray-800 mb-4">📊 Férias por Status</h3>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div style="height: 200px;">
+                            <canvas id="statusFeriasChart"></canvas>
+                        </div>
+                        <div class="space-y-3">
+                            <div class="flex items-center justify-between p-3 bg-red-50 rounded-xl">
+                                <div class="flex items-center gap-2">
+                                    <div class="w-3 h-3 rounded-full bg-red-500"></div>
+                                    <span class="text-sm font-medium text-gray-700">Vencidas</span>
+                                </div>
+                                <span class="text-lg font-bold text-red-600">47</span>
+                            </div>
+                            <div class="flex items-center justify-between p-3 bg-yellow-50 rounded-xl">
+                                <div class="flex items-center gap-2">
+                                    <div class="w-3 h-3 rounded-full bg-yellow-500"></div>
+                                    <span class="text-sm font-medium text-gray-700">A vencer (30d)</span>
+                                </div>
+                                <span class="text-lg font-bold text-yellow-600">123</span>
+                            </div>
+                            <div class="flex items-center justify-between p-3 bg-blue-50 rounded-xl">
+                                <div class="flex items-center gap-2">
+                                    <div class="w-3 h-3 rounded-full bg-blue-500"></div>
+                                    <span class="text-sm font-medium text-gray-700">Programadas</span>
+                                </div>
+                                <span class="text-lg font-bold text-blue-600">856</span>
+                            </div>
+                            <div class="flex items-center justify-between p-3 bg-green-50 rounded-xl">
+                                <div class="flex items-center gap-2">
+                                    <div class="w-3 h-3 rounded-full bg-green-500"></div>
+                                    <span class="text-sm font-medium text-gray-700">Em gozo</span>
+                                </div>
+                                <span class="text-lg font-bold text-green-600">234</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tabela de Férias Vencidas -->
+        <div class="card p-5">
+            <div class="flex items-center justify-between mb-4">
+                <div class="flex items-center gap-3">
+                    <h3 class="text-base font-bold text-gray-800">🚨 Colaboradores com Férias Vencidas</h3>
+                    <span class="alert-badge bg-red-500 text-white text-xs font-bold px-2.5 py-1 rounded-full">47</span>
+                </div>
+                <div class="flex gap-2">
+                    <input type="text" placeholder="Buscar colaborador..." class="text-sm border border-gray-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500" id="searchInput" onkeyup="filterTable()">
+                    <button class="px-3 py-1.5 text-xs font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700">Exportar CSV</button>
+                </div>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full" id="feriasTable">
+                    <thead>
+                        <tr class="border-b border-gray-100">
+                            <th class="text-left text-xs font-semibold text-gray-500 py-3 px-3 sort-btn" onclick="sortTable(0)">Colaborador ↕</th>
+                            <th class="text-left text-xs font-semibold text-gray-500 py-3 px-3 sort-btn" onclick="sortTable(1)">Matrícula ↕</th>
+                            <th class="text-left text-xs font-semibold text-gray-500 py-3 px-3 sort-btn" onclick="sortTable(2)">Unidade ↕</th>
+                            <th class="text-left text-xs font-semibold text-gray-500 py-3 px-3 sort-btn" onclick="sortTable(3)">Cliente ↕</th>
+                            <th class="text-center text-xs font-semibold text-gray-500 py-3 px-3 sort-btn" onclick="sortTable(4)">Dias Vencidos ↕</th>
+                            <th class="text-left text-xs font-semibold text-gray-500 py-3 px-3">Período Aquisitivo</th>
+                            <th class="text-center text-xs font-semibold text-gray-500 py-3 px-3">Risco</th>
+                        </tr>
+                    </thead>
+                    <tbody id="feriasBody"></tbody>
+                </table>
+            </div>
+            <div class="flex items-center justify-between mt-4 pt-3 border-t border-gray-100">
+                <p class="text-xs text-gray-400">Mostrando <span id="showCount">10</span> de 47 registros</p>
+                <div class="flex gap-1">
+                    <button class="px-3 py-1 text-xs font-medium bg-gray-100 text-gray-600 rounded-lg">← Anterior</button>
+                    <button class="px-3 py-1 text-xs font-medium bg-blue-600 text-white rounded-lg">1</button>
+                    <button class="px-3 py-1 text-xs font-medium bg-gray-100 text-gray-600 rounded-lg">2</button>
+                    <button class="px-3 py-1 text-xs font-medium bg-gray-100 text-gray-600 rounded-lg">3</button>
+                    <button class="px-3 py-1 text-xs font-medium bg-gray-100 text-gray-600 rounded-lg">5</button>
+                    <button class="px-3 py-1 text-xs font-medium bg-gray-100 text-gray-600 rounded-lg">Próxima →</button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="max-w-[1440px] mx-auto px-6 py-4 text-center">
+        <p class="text-xs text-gray-400">RH Analytics © 2025 — Dados atualizados em tempo real</p>
+    </footer>
+
+    <script>
+        const now = new Date();
+        document.getElementById('currentDate').textContent = now.toLocaleDateString('pt-BR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+        document.getElementById('updateTime').textContent = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+
+        Chart.defaults.font.family = 'Inter';
+        Chart.defaults.plugins.legend.labels.usePointStyle = true;
+        Chart.defaults.plugins.legend.labels.pointStyle = 'circle';
+        Chart.defaults.plugins.tooltip.backgroundColor = '#1f2937';
+        Chart.defaults.plugins.tooltip.cornerRadius = 8;
+        Chart.defaults.plugins.tooltip.padding = 12;
+
+        // Calendar
+        let currentMonth = now.getMonth();
+        let currentYear = now.getFullYear();
+        const vacationDays = [3,4,5,10,11,12,13,17,18,19,24,25,26,27,28];
+        const highDays = [27,28,29,30,31];
+        const medDays = [13,14,15,16];
+
+        function renderCalendar() {
+            const months = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+            document.getElementById('calendarTitle').textContent = `${months[currentMonth]} ${currentYear}`;
+            const grid = document.getElementById('calendarGrid');
+            grid.innerHTML = '';
+            const firstDay = new Date(currentYear, currentMonth, 1).getDay();
+            const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+            for (let i = 0; i < firstDay; i++) {
+                grid.innerHTML += '<div></div>';
+            }
+            for (let d = 1; d <= daysInMonth; d++) {
+                const isToday = d === now.getDate() && currentMonth === now.getMonth() && currentYear === now.getFullYear();
+                const isVac = vacationDays.includes(d);
+                const isHigh = highDays.includes(d);
+                const isMed = medDays.includes(d);
+                let cls = 'cal-day text-gray-600';
+                if (isToday) cls += ' cal-today';
+                if (isHigh) cls += ' cal-high';
+                else if (isMed) cls += ' cal-medium';
+                else if (isVac) cls += ' cal-vacation';
+                grid.innerHTML += `<div class="${cls}">${d}</div>`;
+            }
+        }
+        function changeMonth(delta) {
+            currentMonth += delta;
+            if (currentMonth < 0) { currentMonth = 11; currentYear--; }
+            if (currentMonth > 11) { currentMonth = 0; currentYear++; }
+            renderCalendar();
+        }
+        renderCalendar();
+
+        // Custo Projeção
+        new Chart(document.getElementById('custosFeriasChart'), {
+            type: 'line',
+            data: {
+                labels: ['Fev/25','Mar/25','Abr/25','Mai/25','Jun/25','Jul/25'],
+                datasets: [{
+                    label: 'Provisão Projetada',
+                    data: [2300000, 2450000, 2580000, 2700000, 2950000, 3200000],
+                    borderColor: '#2563eb',
+                    backgroundColor: 'rgba(37,99,235,0.08)',
+                    borderWidth: 3, fill: true, tension: 0.4,
+                    pointRadius: 5, pointBackgroundColor: '#2563eb', pointBorderColor: '#fff', pointBorderWidth: 2
+                },{
+                    label: 'Pagamento Estimado',
+                    data: [890000, 720000, 650000, 580000, 940000, 1450000],
+                    borderColor: '#10b981',
+                    backgroundColor: 'rgba(16,185,129,0.06)',
+                    borderWidth: 3, fill: true, tension: 0.4,
+                    pointRadius: 5, pointBackgroundColor: '#10b981', pointBorderColor: '#fff', pointBorderWidth: 2
+                }]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                interaction: { mode: 'index', intersect: false },
+                plugins: {
+                    legend: { position: 'top', align: 'end' },
+                    tooltip: { callbacks: { label: ctx => `${ctx.dataset.label}: R$ ${(ctx.parsed.y / 1000000).toFixed(2)}M` } }
+                },
+                scales: {
+                    y: { grid: { color: '#f3f4f6' }, ticks: { callback: v => 'R$ ' + (v/1000000).toFixed(1) + 'M' } },
+                    x: { grid: { display: false } }
+                }
+            }
+        });
+
+        // Status Férias Pie
+        new Chart(document.getElementById('statusFeriasChart'), {
+            type: 'doughnut',
+            data: {
+                labels: ['Vencidas','A vencer (30d)','Programadas','Em gozo'],
+                datasets: [{
+                    data: [47, 123, 856, 234],
+                    backgroundColor: ['#ef4444','#f59e0b','#2563eb','#10b981'],
+                    borderWidth: 0, hoverOffset: 8
+                }]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                cutout: '60%',
+                plugins: {
+                    legend: { display: false },
+                    tooltip: { callbacks: { label: ctx => `${ctx.label}: ${ctx.parsed} colaboradores` } }
+                }
+            }
+        });
+
+        // Table data
+        const employees = [
+            ['Ana Maria Silva','12345','São Paulo - SP','Petrobras',45,'01/2023 - 01/2024'],
+            ['Carlos Eduardo Santos','12678','Rio de Janeiro - RJ','Vale',38,'03/2023 - 03/2024'],
+            ['Maria Fernanda Oliveira','13012','Belo Horizonte - MG','Ambev',32,'04/2023 - 04/2024'],
+            ['João Pedro Lima','13456','Goiânia - GO','JBS',28,'05/2023 - 05/2024'],
+            ['Patrícia Almeida','13789','São Paulo - SP','Itaú',25,'06/2023 - 06/2024'],
+            ['Roberto Gomes Filho','14012','Curitiba - PR','Bradesco',22,'06/2023 - 06/2024'],
+            ['Luciana Martins','14345','Florianópolis - SC','Mag. Luiza',18,'07/2023 - 07/2024'],
+            ['Fernando Costa Neto','14678','São Paulo - SP','Natura',15,'08/2023 - 08/2024'],
+            ['Daniela Ribeiro','15012','São Paulo - SP','B3',12,'08/2023 - 08/2024'],
+            ['Bruno Rocha','15345','São José dos Campos - SP','Embraer',8,'09/2023 - 09/2024']
+        ];
+
+        function renderTable(data) {
+            const tbody = document.getElementById('feriasBody');
+            tbody.innerHTML = '';
+            data.forEach(e => {
+                const risk = e[4] > 30 ? 'Alto' : e[4] > 15 ? 'Médio' : 'Baixo';
+                const riskColor = e[4] > 30 ? 'bg-red-100 text-red-700' : e[4] > 15 ? 'bg-yellow-100 text-yellow-700' : 'bg-green-100 text-green-700';
+                tbody.innerHTML += `
+                <tr class="table-row border-b border-gray-50 transition-colors">
+                    <td class="py-3 px-3 text-sm font-medium text-gray-800">${e[0]}</td>
+                    <td class="py-3 px-3 text-sm text-gray-600">${e[1]}</td>
+                    <td class="py-3 px-3 text-sm text-gray-600">${e[2]}</td>
+                    <td class="py-3 px-3 text-sm text-gray-600">${e[3]}</td>
+                    <td class="py-3 px-3 text-center"><span class="font-bold text-sm ${e[4] > 30 ? 'text-red-600' : e[4] > 15 ? 'text-yellow-600' : 'text-green-600'}">${e[4]}</span></td>
+                    <td class="py-3 px-3 text-sm text-gray-500">${e[5]}</td>
+                    <td class="py-3 px-3 text-center"><span class="text-xs font-semibold px-2.5 py-1 rounded-full ${riskColor}">${risk}</span></td>
+                </tr>`;
+            });
+        }
+        renderTable(employees);
+
+        let sortDir = {};
+        function sortTable(col) {
+            sortDir[col] = !sortDir[col];
+            employees.sort((a,b) => {
+                const va = typeof a[col] === 'number' ? a[col] : a[col].toLowerCase();
+                const vb = typeof b[col] === 'number' ? b[col] : b[col].toLowerCase();
+                return sortDir[col] ? (va > vb ? 1 : -1) : (va < vb ? 1 : -1);
+            });
+            renderTable(employees);
+        }
+
+        function filterTable() {
+            const q = document.getElementById('searchInput').value.toLowerCase();
+            const filtered = employees.filter(e => e.some(v => String(v).toLowerCase().includes(q)));
+            renderTable(filtered);
+            document.getElementById('showCount').textContent = filtered.length;
+        }
+    </script>
+</body>
+</html>

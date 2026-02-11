@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Custos e Folha | RH Analytics</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+        * { font-family: 'Inter', sans-serif; }
+        body { background: #f0f2f5; }
+        .card { background: white; border-radius: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04); transition: all 0.3s ease; border: 1px solid #e5e7eb; }
+        .card:hover { box-shadow: 0 10px 25px rgba(0,0,0,0.08); transform: translateY(-2px); }
+        .kpi-card { position: relative; overflow: hidden; }
+        .kpi-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 4px; }
+        .kpi-blue::before { background: linear-gradient(90deg, #2563eb, #3b82f6); }
+        .kpi-green::before { background: linear-gradient(90deg, #10b981, #34d399); }
+        .kpi-red::before { background: linear-gradient(90deg, #ef4444, #f87171); }
+        .kpi-yellow::before { background: linear-gradient(90deg, #f59e0b, #fbbf24); }
+        .nav-link { transition: all 0.2s ease; }
+        .nav-link:hover { background: rgba(255,255,255,0.15); }
+        .nav-link.active { background: rgba(255,255,255,0.2); border-bottom: 2px solid white; }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 3px; }
+        .table-row:hover { background: #f9fafb; }
+    </style>
+</head>
+<body class="min-h-screen">
+    <header class="bg-gradient-to-r from-blue-700 via-blue-600 to-blue-500 text-white shadow-lg">
+        <div class="max-w-[1440px] mx-auto px-6 py-4">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-sm"><span class="text-xl">💰</span></div>
+                    <div>
+                        <h1 class="text-xl font-bold tracking-tight">Custos e Folha de Pagamento</h1>
+                        <p class="text-blue-100 text-xs">Análise Financeira de Pessoas</p>
+                    </div>
+                </div>
+                <div class="text-right">
+                    <p class="text-sm font-medium" id="currentDate"></p>
+                    <p class="text-blue-200 text-xs">Última atualização: <span id="updateTime"></span></p>
+                </div>
+            </div>
+        </div>
+        <nav class="max-w-[1440px] mx-auto px-6">
+            <div class="flex gap-1 overflow-x-auto pb-0">
+                <a href="dashboard-executivo.html" class="nav-link px-4 py-2.5 text-sm font-medium rounded-t-lg whitespace-nowrap">📊 Executivo</a>
+                <a href="dashboard-ponto.html" class="nav-link px-4 py-2.5 text-sm font-medium rounded-t-lg whitespace-nowrap">⏰ Ponto</a>
+                <a href="dashboard-ferias.html" class="nav-link px-4 py-2.5 text-sm font-medium rounded-t-lg whitespace-nowrap">🏖️ Férias</a>
+                <a href="dashboard-turnover.html" class="nav-link px-4 py-2.5 text-sm font-medium rounded-t-lg whitespace-nowrap">🔄 Turnover</a>
+                <a href="dashboard-compliance.html" class="nav-link px-4 py-2.5 text-sm font-medium rounded-t-lg whitespace-nowrap">⚖️ Compliance</a>
+                <a href="dashboard-custos.html" class="nav-link active px-4 py-2.5 text-sm font-medium rounded-t-lg whitespace-nowrap">💰 Custos</a>
+                <a href="dashboard-treinamento.html" class="nav-link px-4 py-2.5 text-sm font-medium rounded-t-lg whitespace-nowrap">📚 Treinamento</a>
+            </div>
+        </nav>
+    </header>
+
+    <main class="max-w-[1440px] mx-auto px-6 py-6">
+        <!-- KPIs -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-6">
+            <div class="card kpi-card kpi-blue p-5">
+                <div class="flex items-start justify-between">
+                    <div>
+                        <p class="text-sm text-gray-500 font-medium">Folha Total</p>
+                        <p class="text-3xl font-extrabold text-gray-900 mt-1">R$ 45,2M</p>
+                        <div class="flex items-center gap-1 mt-2">
+                            <span class="text-red-500 text-sm font-semibold">▲ 5.1%</span>
+                            <span class="text-gray-400 text-xs">vs mês anterior</span>
+                        </div>
+                    </div>
+                    <div class="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center"><span class="text-2xl">💵</span></div>
+                </div>
+            </div>
+            <div class="card kpi-card kpi-green p-5">
+                <div class="flex items-start justify-between">
+                    <div>
+                        <p class="text-sm text-gray-500 font-medium">Custo Médio/Colab.</p>
+                        <p class="text-3xl font-extrabold text-gray-900 mt-1">R$ 3.602</p>
+                        <div class="flex items-center gap-1 mt-2">
+                            <span class="text-red-500 text-sm font-semibold">▲ 2.3%</span>
+                            <span class="text-gray-400 text-xs">vs mês anterior</span>
+                        </div>
+                    </div>
+                    <div class="w-12 h-12 bg-green-50 rounded-xl flex items-center justify-center"><span class="text-2xl">👤</span></div>
+                </div>
+            </div>
+            <div class="card kpi-card kpi-yellow p-5">
+                <div class="flex items-start justify-between">
+                    <div>
+                        <p class="text-sm text-gray-500 font-medium">Crescimento YoY</p>
+                        <p class="text-3xl font-extrabold text-gray-900 mt-1">12%</p>
+                        <div class="flex items-center gap-1 mt-2">
+                            <span class="text-red-500 text-sm font-semibold">▲ 2%</span>
+                            <span class="text-gray-400 text-xs">acima do orçado</span>
+                        </div>
+                    </div>
+                    <div class="w-12 h-12 bg-yellow-50 rounded-xl flex items-center justify-center"><span class="text-2xl">📈</span></div>
+                </div>
+            </div>
+            <div class="card kpi-card kpi-green p-5">
+                <div class="flex items-start justify-between">
+                    <div>
+                        <p class="text-sm text-gray-500 font-medium">Margem Operacional</p>
+                        <p class="text-3xl font-extrabold text-gray-900 mt-1">23%</p>
+                        <div class="flex items-center gap-1 mt-2">
+                            <span class="text-green-500 text-sm font-semibold">▲ 1.5%</span>
+                            <span class="text-gray-400 text-xs">vs mês anterior</span>
+                        </div>
+                    </div>
+                    <div class="w-12 h-12 bg-green-50 rounded-xl flex items-center justify-center"><span class="text-2xl">🎯</span></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Composição + Evolução -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-6">
+            <div class="card p-5">
+                <h3 class="text-base font-bold text-gray-800 mb-4">📊 Composição de Custos — 12 meses</h3>
+                <div style="height: 340px;">
+                    <canvas id="composicaoChart"></canvas>
+                </div>
+            </div>
+            <div class="card p-5">
+                <h3 class="text-base font-bold text-gray-800 mb-4">📈 Evolução da Folha de Pagamento</h3>
+                <div style="height: 340px;">
+                    <canvas id="evolucaoChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Custo por Cliente | Salario e Beneficios -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-6">
+            <div class="card p-5">
+                <h3 class="text-base font-bold text-gray-800 mb-4">Custo por Cliente</h3>
+                <div style="height: 350px;">
+                    <canvas id="custoClienteChart"></canvas>
+                </div>
+            </div>
+            <div class="card p-5">
+                <h3 class="text-base font-bold text-gray-800 mb-4">Salario e Beneficios</h3>
+                <div style="height: 260px;">
+                    <canvas id="beneficiosChart"></canvas>
+                </div>
+                <div class="mt-4 space-y-2">
+                    <div class="flex items-center justify-between p-2.5 bg-gray-50 rounded-lg">
+                        <div class="flex items-center gap-2">
+                            <div class="w-3 h-3 rounded-full" style="background:#1e40af"></div>
+                            <span class="text-xs text-gray-700">Salarios Base</span>
+                        </div>
+                        <span class="text-sm font-bold text-gray-900">R$ 24,9M</span>
+                    </div>
+                    <div class="flex items-center justify-between p-2.5 bg-gray-50 rounded-lg">
+                        <div class="flex items-center gap-2">
+                            <div class="w-3 h-3 rounded-full" style="background:#f59e0b"></div>
+                            <span class="text-xs text-gray-700">Plano de Saude</span>
+                        </div>
+                        <span class="text-sm font-bold text-gray-900">R$ 5,2M</span>
+                    </div>
+                    <div class="flex items-center justify-between p-2.5 bg-gray-50 rounded-lg">
+                        <div class="flex items-center gap-2">
+                            <div class="w-3 h-3 rounded-full" style="background:#2563eb"></div>
+                            <span class="text-xs text-gray-700">Vale Transporte</span>
+                        </div>
+                        <span class="text-sm font-bold text-gray-900">R$ 4,8M</span>
+                    </div>
+                    <div class="flex items-center justify-between p-2.5 bg-gray-50 rounded-lg">
+                        <div class="flex items-center gap-2">
+                            <div class="w-3 h-3 rounded-full" style="background:#10b981"></div>
+                            <span class="text-xs text-gray-700">Vale Refeicao</span>
+                        </div>
+                        <span class="text-sm font-bold text-gray-900">R$ 3,9M</span>
+                    </div>
+                    <div class="flex items-center justify-between p-2.5 bg-gray-50 rounded-lg">
+                        <div class="flex items-center gap-2">
+                            <div class="w-3 h-3 rounded-full" style="background:#8b5cf6"></div>
+                            <span class="text-xs text-gray-700">Seguro de Vida</span>
+                        </div>
+                        <span class="text-sm font-bold text-gray-900">R$ 1,1M</span>
+                    </div>
+                    <div class="flex items-center justify-between p-2.5 bg-gray-50 rounded-lg">
+                        <div class="flex items-center gap-2">
+                            <div class="w-3 h-3 rounded-full" style="background:#6b7280"></div>
+                            <span class="text-xs text-gray-700">Outros</span>
+                        </div>
+                        <span class="text-sm font-bold text-gray-900">R$ 0,8M</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Resumo Detalhado -->
+        <div class="card p-5">
+            <h3 class="text-base font-bold text-gray-800 mb-4">📋 Detalhamento por Rubrica — Janeiro/2025</h3>
+            <div class="overflow-x-auto">
+                <table class="w-full">
+                    <thead>
+                        <tr class="border-b border-gray-100">
+                            <th class="text-left text-xs font-semibold text-gray-500 py-3 px-3">Rubrica</th>
+                            <th class="text-right text-xs font-semibold text-gray-500 py-3 px-3">Valor (R$)</th>
+                            <th class="text-right text-xs font-semibold text-gray-500 py-3 px-3">% da Folha</th>
+                            <th class="text-right text-xs font-semibold text-gray-500 py-3 px-3">Var. vs Anterior</th>
+                            <th class="text-center text-xs font-semibold text-gray-500 py-3 px-3">Tendência</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr class="table-row border-b border-gray-50 font-semibold bg-blue-50/50">
+                            <td class="py-3 px-3 text-sm text-gray-800">Salários Base</td>
+                            <td class="py-3 px-3 text-sm text-right text-gray-800">24.850.000</td>
+                            <td class="py-3 px-3 text-sm text-right text-gray-600">55.0%</td>
+                            <td class="py-3 px-3 text-sm text-right text-red-600">+3.2%</td>
+                            <td class="py-3 px-3 text-center text-red-500">▲</td>
+                        </tr>
+                        <tr class="table-row border-b border-gray-50">
+                            <td class="py-3 px-3 text-sm text-gray-800">Encargos (INSS/FGTS)</td>
+                            <td class="py-3 px-3 text-sm text-right text-gray-800">8.940.000</td>
+                            <td class="py-3 px-3 text-sm text-right text-gray-600">19.8%</td>
+                            <td class="py-3 px-3 text-sm text-right text-red-600">+3.5%</td>
+                            <td class="py-3 px-3 text-center text-red-500">▲</td>
+                        </tr>
+                        <tr class="table-row border-b border-gray-50">
+                            <td class="py-3 px-3 text-sm text-gray-800">Benefícios</td>
+                            <td class="py-3 px-3 text-sm text-right text-gray-800">7.890.000</td>
+                            <td class="py-3 px-3 text-sm text-right text-gray-600">17.5%</td>
+                            <td class="py-3 px-3 text-sm text-right text-red-600">+4.1%</td>
+                            <td class="py-3 px-3 text-center text-red-500">▲</td>
+                        </tr>
+                        <tr class="table-row border-b border-gray-50">
+                            <td class="py-3 px-3 text-sm text-gray-800">Horas Extras</td>
+                            <td class="py-3 px-3 text-sm text-right text-gray-800">2.150.000</td>
+                            <td class="py-3 px-3 text-sm text-right text-gray-600">4.8%</td>
+                            <td class="py-3 px-3 text-sm text-right text-red-600">+8.7%</td>
+                            <td class="py-3 px-3 text-center text-red-500">▲▲</td>
+                        </tr>
+                        <tr class="table-row border-b border-gray-50">
+                            <td class="py-3 px-3 text-sm text-gray-800">Adicional Noturno</td>
+                            <td class="py-3 px-3 text-sm text-right text-gray-800">680.000</td>
+                            <td class="py-3 px-3 text-sm text-right text-gray-600">1.5%</td>
+                            <td class="py-3 px-3 text-sm text-right text-green-600">-1.2%</td>
+                            <td class="py-3 px-3 text-center text-green-500">▼</td>
+                        </tr>
+                        <tr class="table-row border-b border-gray-50">
+                            <td class="py-3 px-3 text-sm text-gray-800">Provisões (Férias/13º)</td>
+                            <td class="py-3 px-3 text-sm text-right text-gray-800">490.000</td>
+                            <td class="py-3 px-3 text-sm text-right text-gray-600">1.1%</td>
+                            <td class="py-3 px-3 text-sm text-right text-gray-500">0.0%</td>
+                            <td class="py-3 px-3 text-center text-gray-400">→</td>
+                        </tr>
+                        <tr class="table-row border-b border-gray-50">
+                            <td class="py-3 px-3 text-sm text-gray-800">Rescisões</td>
+                            <td class="py-3 px-3 text-sm text-right text-gray-800">180.000</td>
+                            <td class="py-3 px-3 text-sm text-right text-gray-600">0.4%</td>
+                            <td class="py-3 px-3 text-sm text-right text-red-600">+15.3%</td>
+                            <td class="py-3 px-3 text-center text-red-500">▲▲</td>
+                        </tr>
+                        <tr class="table-row font-bold bg-gray-50">
+                            <td class="py-3 px-3 text-sm text-gray-900">TOTAL</td>
+                            <td class="py-3 px-3 text-sm text-right text-gray-900">45.180.000</td>
+                            <td class="py-3 px-3 text-sm text-right text-gray-900">100%</td>
+                            <td class="py-3 px-3 text-sm text-right text-red-600">+5.1%</td>
+                            <td class="py-3 px-3 text-center text-red-500">▲</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <footer class="max-w-[1440px] mx-auto px-6 py-4 text-center">
+        <p class="text-xs text-gray-400">RH Analytics © 2025 — Dados atualizados em tempo real</p>
+    </footer>
+
+    <script>
+        const now = new Date();
+        document.getElementById('currentDate').textContent = now.toLocaleDateString('pt-BR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+        document.getElementById('updateTime').textContent = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+
+        Chart.defaults.font.family = 'Inter';
+        Chart.defaults.plugins.legend.labels.usePointStyle = true;
+        Chart.defaults.plugins.legend.labels.pointStyle = 'circle';
+        Chart.defaults.plugins.tooltip.backgroundColor = '#1f2937';
+        Chart.defaults.plugins.tooltip.cornerRadius = 8;
+        Chart.defaults.plugins.tooltip.padding = 12;
+
+        const meses = ['Fev/24','Mar/24','Abr/24','Mai/24','Jun/24','Jul/24','Ago/24','Set/24','Out/24','Nov/24','Dez/24','Jan/25'];
+
+        // Composição Custos (Stacked Bar)
+        new Chart(document.getElementById('composicaoChart'), {
+            type: 'bar',
+            data: {
+                labels: meses,
+                datasets: [
+                    { label: 'Salários', data: [21.5,21.8,22.1,22.4,22.7,23.0,23.3,23.6,24.0,24.2,24.5,24.9], backgroundColor: '#2563eb', borderRadius: {topLeft:0,topRight:0}, borderSkipped: false },
+                    { label: 'Encargos', data: [7.8,7.9,8.0,8.1,8.2,8.3,8.4,8.5,8.6,8.7,8.8,8.9], backgroundColor: '#60a5fa', borderRadius: 0, borderSkipped: false },
+                    { label: 'Benefícios', data: [6.5,6.6,6.7,6.8,6.9,7.0,7.1,7.2,7.3,7.5,7.6,7.9], backgroundColor: '#10b981', borderRadius: 0, borderSkipped: false },
+                    { label: 'Horas Extras', data: [1.5,1.6,1.4,1.7,1.8,1.6,1.5,1.7,1.9,2.0,1.8,2.2], backgroundColor: '#f59e0b', borderRadius: {topLeft:4,topRight:4}, borderSkipped: false }
+                ]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                plugins: {
+                    legend: { position: 'top', align: 'end' },
+                    tooltip: { callbacks: { label: ctx => `${ctx.dataset.label}: R$ ${ctx.parsed.y.toFixed(1)}M` } }
+                },
+                scales: {
+                    y: { stacked: true, grid: { color: '#f3f4f6' }, ticks: { callback: v => 'R$ ' + v + 'M' } },
+                    x: { stacked: true, grid: { display: false } }
+                }
+            }
+        });
+
+        // Evolução Folha
+        new Chart(document.getElementById('evolucaoChart'), {
+            type: 'line',
+            data: {
+                labels: meses,
+                datasets: [{
+                    label: 'Folha Real',
+                    data: [37.3,37.9,38.2,39.0,39.6,39.9,40.3,41.0,41.8,42.4,42.7,45.2],
+                    borderColor: '#2563eb',
+                    backgroundColor: 'rgba(37,99,235,0.08)',
+                    borderWidth: 3, fill: true, tension: 0.4,
+                    pointRadius: 5, pointBackgroundColor: '#2563eb', pointBorderColor: '#fff', pointBorderWidth: 2
+                },{
+                    label: 'Orçado',
+                    data: [37.0,37.5,38.0,38.5,39.0,39.5,40.0,40.5,41.0,41.5,42.0,42.5],
+                    borderColor: '#d1d5db',
+                    borderWidth: 2, borderDash: [6,4], fill: false, tension: 0.4,
+                    pointRadius: 0
+                }]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                interaction: { mode: 'index', intersect: false },
+                plugins: {
+                    legend: { position: 'top', align: 'end' },
+                    tooltip: { callbacks: { label: ctx => `${ctx.dataset.label}: R$ ${ctx.parsed.y.toFixed(1)}M` } }
+                },
+                scales: {
+                    y: { grid: { color: '#f3f4f6' }, ticks: { callback: v => 'R$ ' + v + 'M' } },
+                    x: { grid: { display: false } }
+                }
+            }
+        });
+
+        // Custo por Cliente
+        new Chart(document.getElementById('custoClienteChart'), {
+            type: 'bar',
+            data: {
+                labels: ['Petrobras','Vale','Ambev','JBS','Itaú','Bradesco','Mag. Luiza','Natura','B3','Embraer'],
+                datasets: [{
+                    label: 'Custo Total (R$ M)',
+                    data: [8.5, 6.9, 5.8, 4.9, 4.2, 3.7, 3.2, 2.9, 2.6, 2.5],
+                    backgroundColor: '#2563eb',
+                    borderRadius: 6, borderSkipped: false
+                }]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                plugins: {
+                    legend: { position: 'top', align: 'end' },
+                    tooltip: { callbacks: { label: ctx => `${ctx.dataset.label}: R$ ${ctx.parsed.y.toFixed(1)}M` } }
+                },
+                scales: {
+                    y: { grid: { color: '#f3f4f6' }, ticks: { callback: v => 'R$ ' + v + 'M' } },
+                    x: { grid: { display: false } }
+                }
+            }
+        });
+
+        // Salario e Beneficios
+        new Chart(document.getElementById('beneficiosChart'), {
+            type: 'doughnut',
+            data: {
+                labels: ['Salarios Base','Plano de Saude','Vale Transporte','Vale Refeicao','Seguro de Vida','Outros'],
+                datasets: [{
+                    data: [24.9, 5.2, 4.8, 3.9, 1.1, 0.8],
+                    backgroundColor: ['#1e40af','#f59e0b','#2563eb','#10b981','#8b5cf6','#6b7280'],
+                    borderWidth: 0, hoverOffset: 8
+                }]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                cutout: '60%',
+                plugins: {
+                    legend: { display: false },
+                    tooltip: { callbacks: { label: ctx => `${ctx.label}: R$ ${ctx.parsed.toFixed(1)}M` } }
+                }
+            }
+        });
+    </script>
+</body>
+</html>

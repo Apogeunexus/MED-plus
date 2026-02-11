@@ -1,0 +1,633 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Executivo | RH Analytics</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+        * { font-family: 'Inter', sans-serif; }
+        body { background: #f0f2f5; }
+        .card { background: white; border-radius: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04); transition: all 0.3s ease; border: 1px solid #e5e7eb; }
+        .card:hover { box-shadow: 0 10px 25px rgba(0,0,0,0.08); transform: translateY(-2px); }
+        .kpi-card { position: relative; overflow: hidden; }
+        .kpi-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 4px; }
+        .kpi-blue::before { background: linear-gradient(90deg, #2563eb, #3b82f6); }
+        .kpi-green::before { background: linear-gradient(90deg, #10b981, #34d399); }
+        .kpi-red::before { background: linear-gradient(90deg, #ef4444, #f87171); }
+        .kpi-yellow::before { background: linear-gradient(90deg, #f59e0b, #fbbf24); }
+        .nav-link { transition: all 0.2s ease; }
+        .nav-link:hover { background: rgba(255,255,255,0.15); }
+        .nav-link.active { background: rgba(255,255,255,0.2); border-bottom: 2px solid white; }
+        .chart-container { position: relative; }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #a1a1a1; }
+        .brasil-map path { transition: all 0.3s ease; cursor: pointer; }
+        .brasil-map path:hover { opacity: 0.8; filter: brightness(1.1); }
+        .tooltip-map { pointer-events: none; transition: opacity 0.2s; }
+        .status-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+        .status-dot.online { background: #10b981; box-shadow: 0 0 6px rgba(16,185,129,0.5); }
+        .status-dot.offline { background: #ef4444; box-shadow: 0 0 6px rgba(239,68,68,0.5); }
+        .status-dot.atrasado { background: #f59e0b; box-shadow: 0 0 6px rgba(245,158,11,0.5); }
+        .blink { animation: blink 1.2s ease-in-out infinite; }
+        @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+        .table-row:hover { background: #f9fafb; }
+        .progress-ring { transform: rotate(-90deg); }
+        .section-title { font-size: 13px; font-weight: 700; color: #6b7280; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 2px solid #e5e7eb; }
+    </style>
+</head>
+<body class="min-h-screen">
+    <!-- Header -->
+    <header class="bg-gradient-to-r from-blue-700 via-blue-600 to-blue-500 text-white shadow-lg">
+        <div class="max-w-[1440px] mx-auto px-6 py-4">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-sm">
+                        <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+                    </div>
+                    <div>
+                        <h1 class="text-xl font-bold tracking-tight">RH Analytics</h1>
+                        <p class="text-blue-100 text-xs">Gestao Inteligente de Pessoas</p>
+                    </div>
+                </div>
+                <div class="text-right">
+                    <p class="text-sm font-medium" id="currentDate"></p>
+                    <p class="text-blue-200 text-xs">Ultima atualizacao: <span id="updateTime"></span></p>
+                </div>
+            </div>
+        </div>
+        <nav class="max-w-[1440px] mx-auto px-6">
+            <div class="flex gap-1 overflow-x-auto pb-0">
+                <a href="dashboard-executivo.html" class="nav-link active px-4 py-2.5 text-sm font-medium rounded-t-lg whitespace-nowrap">Executivo</a>
+                <a href="dashboard-ponto.html" class="nav-link px-4 py-2.5 text-sm font-medium rounded-t-lg whitespace-nowrap">Ponto</a>
+                <a href="dashboard-ferias.html" class="nav-link px-4 py-2.5 text-sm font-medium rounded-t-lg whitespace-nowrap">Ferias</a>
+                <a href="dashboard-turnover.html" class="nav-link px-4 py-2.5 text-sm font-medium rounded-t-lg whitespace-nowrap">Turnover</a>
+                <a href="dashboard-compliance.html" class="nav-link px-4 py-2.5 text-sm font-medium rounded-t-lg whitespace-nowrap">Compliance</a>
+                <a href="dashboard-custos.html" class="nav-link px-4 py-2.5 text-sm font-medium rounded-t-lg whitespace-nowrap">Custos</a>
+                <a href="dashboard-treinamento.html" class="nav-link px-4 py-2.5 text-sm font-medium rounded-t-lg whitespace-nowrap">Treinamento</a>
+            </div>
+        </nav>
+    </header>
+
+    <main class="max-w-[1440px] mx-auto px-6 py-6">
+
+        <!-- ============================================================ -->
+        <!-- TRES QUADROS SUPERIORES -->
+        <!-- ============================================================ -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-5 mb-6">
+
+            <!-- QUADRO 1: Visao Geral Executiva -->
+            <div class="card p-5">
+                <p class="section-title">Visao Geral Executiva</p>
+                <div class="grid grid-cols-2 gap-3">
+                    <div class="bg-blue-50 rounded-xl p-3">
+                        <p class="text-xs text-gray-500 font-medium">Colaboradores Ativos</p>
+                        <p class="text-2xl font-extrabold text-gray-900 mt-1">12.547</p>
+                        <div class="flex items-center gap-1 mt-1">
+                            <span class="text-green-500 text-xs font-semibold">+3.2%</span>
+                            <span class="text-gray-400 text-[10px]">vs mes anterior</span>
+                        </div>
+                    </div>
+                    <div class="bg-red-50 rounded-xl p-3">
+                        <p class="text-xs text-gray-500 font-medium">Turnover Mensal</p>
+                        <p class="text-2xl font-extrabold text-gray-900 mt-1">2.3%</p>
+                        <div class="flex items-center gap-1 mt-1">
+                            <span class="text-red-500 text-xs font-semibold">+0.4%</span>
+                            <span class="text-gray-400 text-[10px]">vs mes anterior</span>
+                        </div>
+                    </div>
+                    <div class="bg-green-50 rounded-xl p-3">
+                        <p class="text-xs text-gray-500 font-medium">Folha de Pagamento</p>
+                        <p class="text-2xl font-extrabold text-gray-900 mt-1">R$ 45,2M</p>
+                        <div class="flex items-center gap-1 mt-1">
+                            <span class="text-red-500 text-xs font-semibold">+5.1%</span>
+                            <span class="text-gray-400 text-[10px]">vs mes anterior</span>
+                        </div>
+                    </div>
+                    <div class="bg-yellow-50 rounded-xl p-3">
+                        <p class="text-xs text-gray-500 font-medium">Assiduidade</p>
+                        <p class="text-2xl font-extrabold text-gray-900 mt-1">97.8%</p>
+                        <div class="flex items-center gap-1 mt-1">
+                            <span class="text-green-500 text-xs font-semibold">+0.3%</span>
+                            <span class="text-gray-400 text-[10px]">vs mes anterior</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- QUADRO 2: Visao Geral Operacional -->
+            <div class="card p-5">
+                <p class="section-title">Visao Geral Operacional</p>
+                <div class="space-y-2.5">
+                    <div class="flex items-center justify-between p-2.5 bg-red-50 rounded-lg border-l-4 border-l-red-500">
+                        <div>
+                            <p class="text-xs font-semibold text-gray-700">Postos Descobertos</p>
+                            <p class="text-[10px] text-red-400">Agora — Sem rendicao</p>
+                        </div>
+                        <span class="text-xl font-extrabold text-red-600 blink">7</span>
+                    </div>
+                    <div class="flex items-center justify-between p-2.5 bg-yellow-50 rounded-lg border-l-4 border-l-yellow-500">
+                        <div>
+                            <p class="text-xs font-semibold text-gray-700">Trocas Atrasadas</p>
+                            <p class="text-[10px] text-yellow-500">Rendicao com atraso &gt;15min</p>
+                        </div>
+                        <span class="text-xl font-extrabold text-yellow-600">14</span>
+                    </div>
+                    <div class="flex items-center justify-between p-2.5 bg-green-50 rounded-lg border-l-4 border-l-green-500">
+                        <div>
+                            <p class="text-xs font-semibold text-gray-700">Trocas no Horario</p>
+                            <p class="text-[10px] text-green-500">91.9% de pontualidade</p>
+                        </div>
+                        <span class="text-xl font-extrabold text-green-600">238</span>
+                    </div>
+                    <div class="flex items-center justify-between p-2.5 bg-blue-50 rounded-lg border-l-4 border-l-blue-500">
+                        <div>
+                            <p class="text-xs font-semibold text-gray-700">Faltas Hoje</p>
+                            <p class="text-[10px] text-blue-400">4 justificadas / 14 nao</p>
+                        </div>
+                        <span class="text-xl font-extrabold text-blue-700">18</span>
+                    </div>
+                    <div class="flex items-center justify-between p-2.5 bg-purple-50 rounded-lg border-l-4 border-l-purple-500">
+                        <div>
+                            <p class="text-xs font-semibold text-gray-700">H.E. Acumuladas Hoje</p>
+                            <p class="text-[10px] text-purple-400">R$ 28,4k custo estimado</p>
+                        </div>
+                        <span class="text-xl font-extrabold text-purple-700">327h</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- QUADRO 3: Cobertura de Postos — Agora -->
+            <div class="card p-5">
+                <p class="section-title">Cobertura de Postos — Agora</p>
+                <div class="flex justify-center mb-4">
+                    <div class="relative w-36 h-36">
+                        <svg viewBox="0 0 120 120" class="w-full h-full">
+                            <circle cx="60" cy="60" r="52" fill="none" stroke="#e5e7eb" stroke-width="10" class="progress-ring"/>
+                            <circle cx="60" cy="60" r="52" fill="none" stroke="#10b981" stroke-width="10" stroke-dasharray="326.7" stroke-dashoffset="26.4" stroke-linecap="round" class="progress-ring"/>
+                        </svg>
+                        <div class="absolute inset-0 flex flex-col items-center justify-center">
+                            <span class="text-3xl font-extrabold text-gray-900">97.3%</span>
+                            <span class="text-xs text-gray-500">cobertos</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="grid grid-cols-3 gap-2 mb-4">
+                    <div class="text-center bg-green-50 rounded-xl p-2.5">
+                        <p class="text-xl font-extrabold text-green-600">238</p>
+                        <p class="text-[10px] text-green-700 font-medium">Sem alteracao</p>
+                    </div>
+                    <div class="text-center bg-yellow-50 rounded-xl p-2.5">
+                        <p class="text-xl font-extrabold text-yellow-600">14</p>
+                        <p class="text-[10px] text-yellow-700 font-medium">Coberto c/ H.E.</p>
+                    </div>
+                    <div class="text-center bg-red-50 rounded-xl p-2.5">
+                        <p class="text-xl font-extrabold text-red-600">7</p>
+                        <p class="text-[10px] text-red-700 font-medium">Descoberto</p>
+                    </div>
+                </div>
+                <div class="space-y-2">
+                    <div class="flex items-center justify-between p-2 bg-gray-50 rounded-lg">
+                        <span class="text-xs text-gray-600">Total postos ativos</span>
+                        <span class="text-sm font-bold text-gray-900">259</span>
+                    </div>
+                    <div class="flex items-center justify-between p-2 bg-gray-50 rounded-lg">
+                        <span class="text-xs text-gray-600">Cobertura reserva acionada</span>
+                        <span class="text-sm font-bold text-blue-600">5 / 7 pendentes</span>
+                    </div>
+                    <div class="flex items-center justify-between p-2 bg-red-50 rounded-lg">
+                        <span class="text-xs text-gray-600">Postos SEM cobertura</span>
+                        <span class="text-sm font-bold text-red-600 blink">2 criticos</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ============================================================ -->
+        <!-- HEADCOUNT: Mapa + Evolucao -->
+        <!-- ============================================================ -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-5 mb-6">
+            <!-- Headcount por Estado -->
+            <div class="card p-5 lg:col-span-1">
+                <h3 class="text-base font-bold text-gray-800 mb-4">Headcount por Estado</h3>
+                <div class="relative" id="mapContainer">
+                    <svg viewBox="0 0 600 600" class="w-full brasil-map" id="brasilMap">
+                        <path d="M180 80 L280 60 L320 90 L340 130 L300 160 L250 170 L200 150 L170 120 Z" fill="#bfdbfe" data-state="AM" data-count="423"/>
+                        <path d="M320 90 L380 70 L410 100 L400 140 L340 130 Z" fill="#93c5fd" data-state="PA" data-count="1876"/>
+                        <path d="M200 150 L250 170 L240 200 L190 190 Z" fill="#dbeafe" data-state="AC" data-count="87"/>
+                        <path d="M250 170 L300 160 L310 200 L270 210 L240 200 Z" fill="#dbeafe" data-state="RO" data-count="234"/>
+                        <path d="M300 160 L340 130 L370 150 L360 190 L310 200 Z" fill="#bfdbfe" data-state="MT" data-count="567"/>
+                        <path d="M340 130 L400 140 L420 170 L400 200 L370 190 L360 190 L370 150 Z" fill="#93c5fd" data-state="TO" data-count="312"/>
+                        <path d="M280 60 L320 50 L350 60 L380 70 L320 90 Z" fill="#dbeafe" data-state="RR" data-count="56"/>
+                        <path d="M350 60 L400 50 L420 80 L410 100 L380 70 Z" fill="#dbeafe" data-state="AP" data-count="43"/>
+                        <path d="M410 100 L450 90 L470 120 L460 160 L420 170 L400 140 Z" fill="#93c5fd" data-state="MA" data-count="654"/>
+                        <path d="M450 90 L490 80 L510 110 L490 140 L470 120 Z" fill="#60a5fa" data-state="PI" data-count="321"/>
+                        <path d="M490 80 L530 85 L540 110 L510 110 Z" fill="#93c5fd" data-state="CE" data-count="987"/>
+                        <path d="M530 85 L555 90 L555 110 L540 110 Z" fill="#bfdbfe" data-state="RN" data-count="234"/>
+                        <path d="M555 110 L555 130 L540 130 L540 110 Z" fill="#bfdbfe" data-state="PB" data-count="189"/>
+                        <path d="M540 130 L555 130 L555 150 L530 155 L520 140 Z" fill="#60a5fa" data-state="PE" data-count="1123"/>
+                        <path d="M540 150 L555 150 L550 160 L535 160 Z" fill="#dbeafe" data-state="AL" data-count="167"/>
+                        <path d="M530 160 L545 165 L535 180 L515 175 Z" fill="#dbeafe" data-state="SE" data-count="145"/>
+                        <path d="M460 160 L520 140 L530 155 L530 160 L515 175 L500 200 L470 210 L450 200 L440 180 Z" fill="#3b82f6" data-state="BA" data-count="1543"/>
+                        <path d="M360 190 L400 200 L420 170 L440 180 L450 200 L430 250 L380 260 L350 240 L340 220 Z" fill="#93c5fd" data-state="GO" data-count="876"/>
+                        <path d="M380 230 L410 230 L400 250 L385 248 Z" fill="#2563eb" data-state="DF" data-count="345"/>
+                        <path d="M310 200 L360 190 L340 220 L350 240 L330 270 L290 260 L270 230 L270 210 Z" fill="#bfdbfe" data-state="MS" data-count="432"/>
+                        <path d="M350 240 L380 260 L430 250 L450 280 L420 310 L380 320 L360 300 L340 280 L330 270 Z" fill="#2563eb" data-state="MG" data-count="1987"/>
+                        <path d="M420 310 L450 300 L470 310 L460 330 L430 330 Z" fill="#60a5fa" data-state="ES" data-count="543"/>
+                        <path d="M380 320 L420 310 L430 330 L420 360 L380 370 L360 350 Z" fill="#1d4ed8" data-state="RJ" data-count="1234"/>
+                        <path d="M290 260 L330 270 L340 280 L360 300 L380 320 L380 370 L350 400 L310 390 L280 350 L270 300 Z" fill="#1e40af" data-state="SP" data-count="3245"/>
+                        <path d="M270 300 L310 390 L350 400 L340 430 L300 440 L280 420 L260 380 L255 340 Z" fill="#60a5fa" data-state="PR" data-count="1123"/>
+                        <path d="M255 340 L260 380 L280 420 L300 440 L290 470 L260 480 L240 450 L235 400 Z" fill="#93c5fd" data-state="SC" data-count="678"/>
+                        <path d="M235 400 L240 450 L260 480 L250 520 L220 530 L200 500 L210 440 Z" fill="#bfdbfe" data-state="RS" data-count="897"/>
+                    </svg>
+                    <div id="mapTooltip" class="tooltip-map absolute hidden bg-gray-900 text-white text-xs px-3 py-2 rounded-lg shadow-lg z-10"></div>
+                </div>
+                <div class="mt-3 flex items-center justify-center gap-4">
+                    <div class="flex items-center gap-1.5"><div class="w-3 h-3 rounded-sm" style="background:#dbeafe"></div><span class="text-xs text-gray-500">&lt; 200</span></div>
+                    <div class="flex items-center gap-1.5"><div class="w-3 h-3 rounded-sm" style="background:#93c5fd"></div><span class="text-xs text-gray-500">200-800</span></div>
+                    <div class="flex items-center gap-1.5"><div class="w-3 h-3 rounded-sm" style="background:#3b82f6"></div><span class="text-xs text-gray-500">800-2000</span></div>
+                    <div class="flex items-center gap-1.5"><div class="w-3 h-3 rounded-sm" style="background:#1e40af"></div><span class="text-xs text-gray-500">&gt; 2000</span></div>
+                </div>
+            </div>
+
+            <!-- Evolucao do Headcount -->
+            <div class="card p-5 lg:col-span-2">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-base font-bold text-gray-800">Evolucao do Headcount — 12 meses</h3>
+                    <div class="flex gap-2">
+                        <button class="px-3 py-1 text-xs font-medium bg-blue-50 text-blue-600 rounded-lg">Mensal</button>
+                        <button class="px-3 py-1 text-xs font-medium text-gray-400 hover:bg-gray-50 rounded-lg">Trimestral</button>
+                    </div>
+                </div>
+                <div class="chart-container" style="height: 320px;">
+                    <canvas id="headcountChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- ============================================================ -->
+        <!-- TOP 10 CLIENTES | CONTRATO | REGIAO -->
+        <!-- ============================================================ -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-6">
+            <div class="card p-5">
+                <h3 class="text-base font-bold text-gray-800 mb-4">Top 10 Clientes por Headcount</h3>
+                <div class="chart-container" style="height: 350px;">
+                    <canvas id="clientesChart"></canvas>
+                </div>
+            </div>
+            <div class="card p-5">
+                <div class="grid grid-cols-2 gap-5 h-full">
+                    <div>
+                        <h3 class="text-base font-bold text-gray-800 mb-4">Tipo de Contrato</h3>
+                        <div class="chart-container" style="height: 220px;">
+                            <canvas id="contratoChart"></canvas>
+                        </div>
+                    </div>
+                    <div>
+                        <h3 class="text-base font-bold text-gray-800 mb-4">Por Regiao</h3>
+                        <div class="chart-container" style="height: 220px;">
+                            <canvas id="regiaoChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ============================================================ -->
+        <!-- POSTOS DESCOBERTOS | PONTUALIDADE | FALTAS POR POSTO -->
+        <!-- ============================================================ -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-5 mb-6">
+
+            <!-- Postos Descobertos -->
+            <div class="card p-5">
+                <div class="flex items-center justify-between mb-4">
+                    <div class="flex items-center gap-2">
+                        <h3 class="text-base font-bold text-gray-800">Postos Descobertos</h3>
+                        <span class="blink bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">7</span>
+                    </div>
+                    <span class="text-xs text-gray-400">Agora</span>
+                </div>
+                <div class="overflow-y-auto max-h-[380px] space-y-2">
+                    <div class="p-3 bg-red-50/50 rounded-lg border-l-4 border-l-red-500">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-sm font-semibold text-gray-800">Portaria Principal</p>
+                                <p class="text-xs text-gray-500">Petrobras — Santos/SP</p>
+                            </div>
+                            <span class="text-sm font-extrabold text-red-600">2h14</span>
+                        </div>
+                        <div class="mt-1.5 flex items-center gap-3 text-[10px] text-gray-500">
+                            <span>Saiu: Jose A. Silva 06:02</span>
+                            <span class="text-red-500 font-semibold">Carlos M. Souza nao chegou</span>
+                        </div>
+                    </div>
+                    <div class="p-3 bg-red-50/50 rounded-lg border-l-4 border-l-red-500">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-sm font-semibold text-gray-800">Sala de Controle B</p>
+                                <p class="text-xs text-gray-500">Vale — Carajas/PA</p>
+                            </div>
+                            <span class="text-sm font-extrabold text-red-600">2h09</span>
+                        </div>
+                        <div class="mt-1.5 flex items-center gap-3 text-[10px] text-gray-500">
+                            <span>Saiu: Marcos P. Lima 06:05</span>
+                            <span class="text-red-500 font-semibold">Ana R. Ferreira nao chegou</span>
+                        </div>
+                    </div>
+                    <div class="p-3 bg-red-50/50 rounded-lg border-l-4 border-l-red-500">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-sm font-semibold text-gray-800">Recepcao Bloco C</p>
+                                <p class="text-xs text-gray-500">Itau — Paulista/SP</p>
+                            </div>
+                            <span class="text-sm font-extrabold text-red-600">1h58</span>
+                        </div>
+                        <div class="mt-1.5 flex items-center gap-3 text-[10px] text-gray-500">
+                            <span>Saiu: Fernanda G. Costa 06:10</span>
+                            <span class="text-red-500 font-semibold">Bruno T. Rocha nao chegou</span>
+                        </div>
+                    </div>
+                    <div class="p-3 bg-red-50/50 rounded-lg border-l-4 border-l-red-500">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-sm font-semibold text-gray-800">Guarita Leste</p>
+                                <p class="text-xs text-gray-500">JBS — Anapolis/GO</p>
+                            </div>
+                            <span class="text-sm font-extrabold text-red-600">1h42</span>
+                        </div>
+                        <div class="mt-1.5 flex items-center gap-3 text-[10px] text-gray-500">
+                            <span>Saiu: Paulo R. Alves 14:03</span>
+                            <span class="text-red-500 font-semibold">Rodrigo S. Nunes nao chegou</span>
+                        </div>
+                    </div>
+                    <div class="p-3 bg-yellow-50/50 rounded-lg border-l-4 border-l-yellow-500">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-sm font-semibold text-gray-800">CFTV — Monitoramento</p>
+                                <p class="text-xs text-gray-500">Bradesco — Osasco/SP</p>
+                            </div>
+                            <span class="text-sm font-extrabold text-yellow-600">38min</span>
+                        </div>
+                        <div class="mt-1.5 flex items-center gap-3 text-[10px] text-gray-500">
+                            <span>Saiu: Luciana F. Martins 06:00</span>
+                            <span class="text-yellow-600 font-semibold">Daniel V. Ribeiro chegou 06:38</span>
+                        </div>
+                    </div>
+                    <div class="p-3 bg-red-50/50 rounded-lg border-l-4 border-l-red-500">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-sm font-semibold text-gray-800">Limpeza — Piso 12</p>
+                                <p class="text-xs text-gray-500">B3 — Consolacao/SP</p>
+                            </div>
+                            <span class="text-sm font-extrabold text-red-600">2h14</span>
+                        </div>
+                        <div class="mt-1.5 flex items-center gap-3 text-[10px] text-gray-500">
+                            <span>Saiu: Adriana C. Oliveira 06:00</span>
+                            <span class="text-red-500 font-semibold">Sandra M. Pereira nao chegou</span>
+                        </div>
+                    </div>
+                    <div class="p-3 bg-red-50/50 rounded-lg border-l-4 border-l-red-500">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-sm font-semibold text-gray-800">Manutencao Eletrica</p>
+                                <p class="text-xs text-gray-500">Ambev — Contagem/MG</p>
+                            </div>
+                            <span class="text-sm font-extrabold text-red-600">2h06</span>
+                        </div>
+                        <div class="mt-1.5 flex items-center gap-3 text-[10px] text-gray-500">
+                            <span>Saiu: Ricardo J. Santos 06:08</span>
+                            <span class="text-red-500 font-semibold">Thiago L. Mendes nao chegou</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="mt-3 pt-2 border-t border-gray-100 flex items-center justify-between">
+                    <div class="flex items-center gap-3">
+                        <div class="flex items-center gap-1"><span class="status-dot offline"></span><span class="text-[10px] text-gray-500">Descoberto</span></div>
+                        <div class="flex items-center gap-1"><span class="status-dot atrasado"></span><span class="text-[10px] text-gray-500">Atrasado</span></div>
+                    </div>
+                    <button class="text-xs font-medium text-blue-600 hover:text-blue-800">Ver todos →</button>
+                </div>
+            </div>
+
+            <!-- Pontualidade na Rendicao por Posto -->
+            <div class="card p-5">
+                <h3 class="text-base font-bold text-gray-800 mb-4">Pontualidade na Rendicao por Posto — 7 dias</h3>
+                <div style="height: 420px;">
+                    <canvas id="trocaTurnoChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Faltas por Posto -->
+            <div class="card p-5">
+                <h3 class="text-base font-bold text-gray-800 mb-4">Faltas por Posto — Hoje</h3>
+                <div style="height: 420px;">
+                    <canvas id="faltasPostoChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <footer class="max-w-[1440px] mx-auto px-6 py-4 text-center">
+        <p class="text-xs text-gray-400">RH Analytics 2025 — Dados atualizados em tempo real</p>
+    </footer>
+
+    <script>
+        const now = new Date();
+        document.getElementById('currentDate').textContent = now.toLocaleDateString('pt-BR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+        document.getElementById('updateTime').textContent = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+
+        Chart.defaults.font.family = 'Inter';
+        Chart.defaults.plugins.legend.labels.usePointStyle = true;
+        Chart.defaults.plugins.legend.labels.pointStyle = 'circle';
+        Chart.defaults.plugins.legend.labels.padding = 16;
+        Chart.defaults.plugins.tooltip.backgroundColor = '#1f2937';
+        Chart.defaults.plugins.tooltip.cornerRadius = 8;
+        Chart.defaults.plugins.tooltip.padding = 12;
+
+        // Headcount Evolution
+        new Chart(document.getElementById('headcountChart'), {
+            type: 'line',
+            data: {
+                labels: ['Fev/24','Mar/24','Abr/24','Mai/24','Jun/24','Jul/24','Ago/24','Set/24','Out/24','Nov/24','Dez/24','Jan/25'],
+                datasets: [{
+                    label: 'Headcount',
+                    data: [11280, 11450, 11620, 11780, 11950, 12050, 12120, 12180, 12300, 12380, 12470, 12547],
+                    borderColor: '#2563eb',
+                    backgroundColor: 'rgba(37,99,235,0.08)',
+                    borderWidth: 3, fill: true, tension: 0.4,
+                    pointRadius: 4, pointBackgroundColor: '#2563eb', pointBorderColor: '#fff', pointBorderWidth: 2, pointHoverRadius: 7
+                },{
+                    label: 'Meta',
+                    data: [11500, 11600, 11700, 11800, 11900, 12000, 12100, 12200, 12300, 12400, 12500, 12600],
+                    borderColor: '#d1d5db', borderWidth: 2, borderDash: [6,4], fill: false, tension: 0.4, pointRadius: 0
+                }]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                interaction: { mode: 'index', intersect: false },
+                plugins: {
+                    legend: { position: 'top', align: 'end' },
+                    tooltip: { callbacks: { label: ctx => `${ctx.dataset.label}: ${ctx.parsed.y.toLocaleString('pt-BR')} colaboradores` } }
+                },
+                scales: {
+                    y: { beginAtZero: false, min: 11000, grid: { color: '#f3f4f6' }, ticks: { callback: v => v.toLocaleString('pt-BR') } },
+                    x: { grid: { display: false } }
+                }
+            }
+        });
+
+        // Top 10 Clientes
+        new Chart(document.getElementById('clientesChart'), {
+            type: 'bar',
+            data: {
+                labels: ['Petrobras','Vale','Ambev','JBS','Itau','Bradesco','Magazine Luiza','Natura','B3','Embraer'],
+                datasets: [{
+                    label: 'Colaboradores',
+                    data: [1870, 1540, 1320, 1180, 980, 870, 750, 680, 620, 540],
+                    backgroundColor: [
+                        'rgba(37,99,235,0.85)','rgba(37,99,235,0.75)','rgba(37,99,235,0.65)',
+                        'rgba(37,99,235,0.55)','rgba(37,99,235,0.50)','rgba(37,99,235,0.45)',
+                        'rgba(37,99,235,0.40)','rgba(37,99,235,0.35)','rgba(37,99,235,0.30)','rgba(37,99,235,0.25)'
+                    ],
+                    borderRadius: 6, borderSkipped: false
+                }]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false, indexAxis: 'y',
+                plugins: {
+                    legend: { display: false },
+                    tooltip: { callbacks: { label: ctx => `${ctx.parsed.x.toLocaleString('pt-BR')} colaboradores` } }
+                },
+                scales: {
+                    x: { grid: { color: '#f3f4f6' }, ticks: { callback: v => v.toLocaleString('pt-BR') } },
+                    y: { grid: { display: false } }
+                }
+            }
+        });
+
+        // Tipo de Contrato
+        new Chart(document.getElementById('contratoChart'), {
+            type: 'doughnut',
+            data: {
+                labels: ['CLT', 'Temporario', 'Intermitente', 'Aprendiz'],
+                datasets: [{ data: [8540, 2870, 780, 357], backgroundColor: ['#2563eb','#60a5fa','#93c5fd','#bfdbfe'], borderWidth: 0, hoverOffset: 8 }]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false, cutout: '65%',
+                plugins: {
+                    legend: { position: 'bottom', labels: { font: { size: 11 }, padding: 10 } },
+                    tooltip: { callbacks: { label: ctx => `${ctx.label}: ${ctx.parsed.toLocaleString('pt-BR')}` } }
+                }
+            }
+        });
+
+        // Por Regiao
+        new Chart(document.getElementById('regiaoChart'), {
+            type: 'doughnut',
+            data: {
+                labels: ['Sudeste', 'Nordeste', 'Sul', 'Centro-Oeste', 'Norte'],
+                datasets: [{ data: [5890, 3120, 1890, 987, 660], backgroundColor: ['#1e40af','#2563eb','#3b82f6','#60a5fa','#93c5fd'], borderWidth: 0, hoverOffset: 8 }]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false, cutout: '65%',
+                plugins: {
+                    legend: { position: 'bottom', labels: { font: { size: 11 }, padding: 10 } },
+                    tooltip: { callbacks: { label: ctx => `${ctx.label}: ${ctx.parsed.toLocaleString('pt-BR')}` } }
+                }
+            }
+        });
+
+        // Pontualidade na Rendicao — Stacked Bar
+        new Chart(document.getElementById('trocaTurnoChart'), {
+            type: 'bar',
+            data: {
+                labels: ['Seg','Ter','Qua','Qui','Sex','Sab','Dom'],
+                datasets: [{
+                    label: 'No horario',
+                    data: [234, 241, 238, 229, 235, 142, 98],
+                    backgroundColor: '#10b981', borderRadius: 4, borderSkipped: false
+                },{
+                    label: 'Atrasados (>15min)',
+                    data: [18, 12, 14, 22, 16, 8, 5],
+                    backgroundColor: '#f59e0b', borderRadius: 4, borderSkipped: false
+                },{
+                    label: 'Nao compareceu',
+                    data: [7, 6, 7, 8, 8, 4, 2],
+                    backgroundColor: '#ef4444', borderRadius: 4, borderSkipped: false
+                }]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                plugins: {
+                    legend: { position: 'top', align: 'end', labels: { font: { size: 11 } } },
+                    tooltip: { callbacks: { label: ctx => `${ctx.dataset.label}: ${ctx.parsed.y} postos` } }
+                },
+                scales: {
+                    y: { stacked: true, grid: { color: '#f3f4f6' } },
+                    x: { stacked: true, grid: { display: false } }
+                }
+            }
+        });
+
+        // Faltas por Posto — Horizontal bar
+        new Chart(document.getElementById('faltasPostoChart'), {
+            type: 'bar',
+            data: {
+                labels: [
+                    'Portaria A — Petrobras SP','Sala Controle — Vale PA','Recepcao — Itau SP',
+                    'Guarita — JBS GO','Limpeza — B3 SP','Manutencao — Ambev MG',
+                    'Recepcao — Natura SP','Almoxarifado — Embraer SP','Vigilancia — Bradesco PR',
+                    'Portaria — Mag. Luiza SC','Operacional — JBS GO','Limpeza — Vale RJ'
+                ],
+                datasets: [{
+                    label: 'Faltas',
+                    data: [3, 2, 2, 2, 1, 1, 1, 1, 1, 1, 1, 1],
+                    backgroundColor: ctx => {
+                        const v = ctx.parsed.x;
+                        if (v >= 3) return '#ef4444';
+                        if (v >= 2) return '#f59e0b';
+                        return '#3b82f6';
+                    },
+                    borderRadius: 6, borderSkipped: false, barThickness: 22
+                }]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false, indexAxis: 'y',
+                plugins: {
+                    legend: { display: false },
+                    tooltip: { callbacks: { label: ctx => `${ctx.parsed.x} falta(s) hoje` } }
+                },
+                scales: {
+                    x: { grid: { color: '#f3f4f6' }, ticks: { stepSize: 1 } },
+                    y: { grid: { display: false }, ticks: { font: { size: 10 } } }
+                }
+            }
+        });
+
+        // Map tooltips
+        document.querySelectorAll('.brasil-map path').forEach(path => {
+            path.addEventListener('mouseenter', e => {
+                const tooltip = document.getElementById('mapTooltip');
+                const state = e.target.getAttribute('data-state');
+                const count = parseInt(e.target.getAttribute('data-count')).toLocaleString('pt-BR');
+                tooltip.innerHTML = `<strong>${state}</strong>: ${count} colaboradores`;
+                tooltip.classList.remove('hidden');
+            });
+            path.addEventListener('mousemove', e => {
+                const tooltip = document.getElementById('mapTooltip');
+                const rect = document.getElementById('mapContainer').getBoundingClientRect();
+                tooltip.style.left = (e.clientX - rect.left + 10) + 'px';
+                tooltip.style.top = (e.clientY - rect.top - 30) + 'px';
+            });
+            path.addEventListener('mouseleave', () => {
+                document.getElementById('mapTooltip').classList.add('hidden');
+            });
+        });
+    </script>
+</body>
+</html>

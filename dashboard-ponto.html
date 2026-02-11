@@ -1,0 +1,529 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Controle de Ponto | RH Analytics</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+        * { font-family: 'Inter', sans-serif; }
+        body { background: #f0f2f5; }
+        .card { background: white; border-radius: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04); transition: all 0.3s ease; border: 1px solid #e5e7eb; }
+        .card:hover { box-shadow: 0 10px 25px rgba(0,0,0,0.08); transform: translateY(-2px); }
+        .kpi-card { position: relative; overflow: hidden; }
+        .kpi-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 4px; }
+        .kpi-blue::before { background: linear-gradient(90deg, #2563eb, #3b82f6); }
+        .kpi-green::before { background: linear-gradient(90deg, #10b981, #34d399); }
+        .kpi-red::before { background: linear-gradient(90deg, #ef4444, #f87171); }
+        .kpi-yellow::before { background: linear-gradient(90deg, #f59e0b, #fbbf24); }
+        .nav-link { transition: all 0.2s ease; }
+        .nav-link:hover { background: rgba(255,255,255,0.15); }
+        .nav-link.active { background: rgba(255,255,255,0.2); border-bottom: 2px solid white; }
+        .heatmap-cell { border-radius: 4px; transition: all 0.2s; cursor: pointer; min-width: 44px; min-height: 36px; }
+        .heatmap-cell:hover { transform: scale(1.15); z-index: 10; box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 3px; }
+        table th { position: sticky; top: 0; background: white; z-index: 5; }
+    </style>
+</head>
+<body class="min-h-screen">
+    <!-- Header -->
+    <header class="bg-gradient-to-r from-blue-700 via-blue-600 to-blue-500 text-white shadow-lg">
+        <div class="max-w-[1440px] mx-auto px-6 py-4">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-sm">
+                        <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    </div>
+                    <div>
+                        <h1 class="text-xl font-bold tracking-tight">Controle de Ponto</h1>
+                        <p class="text-blue-100 text-xs">Monitoramento de Jornada e Frequencia</p>
+                    </div>
+                </div>
+                <div class="text-right">
+                    <p class="text-sm font-medium" id="currentDate"></p>
+                    <p class="text-blue-200 text-xs">Ultima atualizacao: <span id="updateTime"></span></p>
+                </div>
+            </div>
+        </div>
+        <nav class="max-w-[1440px] mx-auto px-6">
+            <div class="flex gap-1 overflow-x-auto pb-0">
+                <a href="dashboard-executivo.html" class="nav-link px-4 py-2.5 text-sm font-medium rounded-t-lg whitespace-nowrap">Executivo</a>
+                <a href="dashboard-ponto.html" class="nav-link active px-4 py-2.5 text-sm font-medium rounded-t-lg whitespace-nowrap">Ponto</a>
+                <a href="dashboard-ferias.html" class="nav-link px-4 py-2.5 text-sm font-medium rounded-t-lg whitespace-nowrap">Ferias</a>
+                <a href="dashboard-turnover.html" class="nav-link px-4 py-2.5 text-sm font-medium rounded-t-lg whitespace-nowrap">Turnover</a>
+                <a href="dashboard-compliance.html" class="nav-link px-4 py-2.5 text-sm font-medium rounded-t-lg whitespace-nowrap">Compliance</a>
+                <a href="dashboard-custos.html" class="nav-link px-4 py-2.5 text-sm font-medium rounded-t-lg whitespace-nowrap">Custos</a>
+                <a href="dashboard-treinamento.html" class="nav-link px-4 py-2.5 text-sm font-medium rounded-t-lg whitespace-nowrap">Treinamento</a>
+            </div>
+        </nav>
+    </header>
+
+    <main class="max-w-[1440px] mx-auto px-6 py-6">
+        <!-- KPI Cards: Presentes | Pontualidade | Faltas | Horas Extras -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-6">
+            <div class="card kpi-card kpi-green p-5">
+                <div class="flex items-start justify-between">
+                    <div>
+                        <p class="text-sm text-gray-500 font-medium">Presentes Agora</p>
+                        <p class="text-3xl font-extrabold text-gray-900 mt-1">1.850</p>
+                        <div class="flex items-center gap-1 mt-2">
+                            <span class="text-green-500 text-sm font-semibold">94.7%</span>
+                            <span class="text-gray-400 text-xs">da escala</span>
+                        </div>
+                    </div>
+                    <div class="w-12 h-12 bg-green-50 rounded-xl flex items-center justify-center">
+                        <svg class="w-6 h-6 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    </div>
+                </div>
+            </div>
+            <div class="card kpi-card kpi-blue p-5">
+                <div class="flex items-start justify-between">
+                    <div>
+                        <p class="text-sm text-gray-500 font-medium">Pontualidade</p>
+                        <p class="text-3xl font-extrabold text-gray-900 mt-1">87.3%</p>
+                        <div class="flex items-center gap-1 mt-2">
+                            <span class="text-green-500 text-sm font-semibold">+1.2%</span>
+                            <span class="text-gray-400 text-xs">vs semana anterior</span>
+                        </div>
+                    </div>
+                    <div class="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center">
+                        <svg class="w-6 h-6 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>
+                    </div>
+                </div>
+            </div>
+            <div class="card kpi-card kpi-red p-5">
+                <div class="flex items-start justify-between">
+                    <div>
+                        <p class="text-sm text-gray-500 font-medium">Faltas Hoje</p>
+                        <p class="text-3xl font-extrabold text-gray-900 mt-1">12</p>
+                        <div class="flex items-center gap-1 mt-2">
+                            <span class="text-green-500 text-sm font-semibold">-3</span>
+                            <span class="text-gray-400 text-xs">vs ontem</span>
+                        </div>
+                    </div>
+                    <div class="w-12 h-12 bg-red-50 rounded-xl flex items-center justify-center">
+                        <svg class="w-6 h-6 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/></svg>
+                    </div>
+                </div>
+            </div>
+            <div class="card kpi-card kpi-yellow p-5">
+                <div class="flex items-start justify-between">
+                    <div>
+                        <p class="text-sm text-gray-500 font-medium">Horas Extras Hoje</p>
+                        <p class="text-3xl font-extrabold text-gray-900 mt-1">327h</p>
+                        <div class="flex items-center gap-1 mt-2">
+                            <span class="text-red-500 text-sm font-semibold">+12%</span>
+                            <span class="text-gray-400 text-xs">vs ontem</span>
+                        </div>
+                    </div>
+                    <div class="w-12 h-12 bg-yellow-50 rounded-xl flex items-center justify-center">
+                        <svg class="w-6 h-6 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Top 10 HE | HE por Posto | Custo HE por Posto -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-5 mb-6">
+            <!-- Top 10 HE -->
+            <div class="card p-5">
+                <h3 class="text-base font-bold text-gray-800 mb-4">Top 10 — Horas Extras (mes)</h3>
+                <div class="chart-container" style="height: 440px;">
+                    <canvas id="heChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Horas Extras por Posto de Trabalho -->
+            <div class="card p-5">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-base font-bold text-gray-800">Horas Extras por Posto</h3>
+                    <div class="flex gap-2">
+                        <button class="px-3 py-1 text-xs font-medium bg-blue-50 text-blue-600 rounded-lg" id="btnMes" onclick="updateHEPeriod('mes')">Mes</button>
+                        <button class="px-3 py-1 text-xs font-medium text-gray-400 hover:bg-gray-50 rounded-lg" id="btnSemana" onclick="updateHEPeriod('semana')">Semana</button>
+                    </div>
+                </div>
+                <div style="height: 440px;">
+                    <canvas id="hePostoChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Custo de H.E. por Posto -->
+            <div class="card p-5">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-base font-bold text-gray-800">Custo de H.E. por Posto — Top 15</h3>
+                    <span class="text-xs text-gray-400">Janeiro/2025</span>
+                </div>
+                <div style="height: 440px;">
+                    <canvas id="heCustoPostoChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Mapa de Calor — Absenteismo por Unidade (largura total) -->
+        <div class="card p-5 mb-6">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-base font-bold text-gray-800">Mapa de Calor — Absenteismo por Unidade</h3>
+                <span class="text-xs text-gray-400">Ultima semana</span>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full">
+                    <thead>
+                        <tr>
+                            <th class="text-left text-xs font-semibold text-gray-500 pb-2 pr-3 w-32">Unidade</th>
+                            <th class="text-center text-xs font-medium text-gray-400 pb-2 px-1">Seg</th>
+                            <th class="text-center text-xs font-medium text-gray-400 pb-2 px-1">Ter</th>
+                            <th class="text-center text-xs font-medium text-gray-400 pb-2 px-1">Qua</th>
+                            <th class="text-center text-xs font-medium text-gray-400 pb-2 px-1">Qui</th>
+                            <th class="text-center text-xs font-medium text-gray-400 pb-2 px-1">Sex</th>
+                            <th class="text-center text-xs font-medium text-gray-400 pb-2 px-1">Sab</th>
+                            <th class="text-center text-xs font-medium text-gray-400 pb-2 px-1">Dom</th>
+                        </tr>
+                    </thead>
+                    <tbody id="heatmapBody"></tbody>
+                </table>
+            </div>
+            <div class="mt-4 flex items-center justify-center gap-4">
+                <div class="flex items-center gap-1.5"><div class="w-4 h-3 rounded-sm" style="background:#dcfce7"></div><span class="text-xs text-gray-500">&lt; 1%</span></div>
+                <div class="flex items-center gap-1.5"><div class="w-4 h-3 rounded-sm" style="background:#86efac"></div><span class="text-xs text-gray-500">1-2%</span></div>
+                <div class="flex items-center gap-1.5"><div class="w-4 h-3 rounded-sm" style="background:#fde68a"></div><span class="text-xs text-gray-500">2-4%</span></div>
+                <div class="flex items-center gap-1.5"><div class="w-4 h-3 rounded-sm" style="background:#fca5a5"></div><span class="text-xs text-gray-500">4-6%</span></div>
+                <div class="flex items-center gap-1.5"><div class="w-4 h-3 rounded-sm" style="background:#ef4444"></div><span class="text-xs text-gray-500">&gt; 6%</span></div>
+            </div>
+        </div>
+        <!-- Controle de Faltas + HE Top por Cliente -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-5 mb-6">
+            <!-- Controle de Faltas — Hoje -->
+            <div class="card p-5 lg:col-span-2">
+                <div class="flex items-center justify-between mb-4">
+                    <div class="flex items-center gap-3">
+                        <h3 class="text-base font-bold text-gray-800">Controle de Faltas — Hoje</h3>
+                        <span class="bg-red-500 text-white text-xs font-bold px-2.5 py-1 rounded-full">18</span>
+                    </div>
+                    <div class="flex gap-2 items-center">
+                        <span class="text-xs bg-green-100 text-green-700 font-semibold px-2 py-0.5 rounded-full">4 justificadas</span>
+                        <span class="text-xs bg-red-100 text-red-700 font-semibold px-2 py-0.5 rounded-full">14 injustificadas</span>
+                    </div>
+                </div>
+                <div class="overflow-x-auto max-h-[340px] overflow-y-auto">
+                    <table class="w-full">
+                        <thead>
+                            <tr class="border-b border-gray-100">
+                                <th class="text-left text-xs font-semibold text-gray-500 py-2.5 px-3 sticky top-0 bg-white">Colaborador</th>
+                                <th class="text-left text-xs font-semibold text-gray-500 py-2.5 px-3 sticky top-0 bg-white">Posto / Cliente</th>
+                                <th class="text-center text-xs font-semibold text-gray-500 py-2.5 px-3 sticky top-0 bg-white">Turno</th>
+                                <th class="text-center text-xs font-semibold text-gray-500 py-2.5 px-3 sticky top-0 bg-white">Faltas (mes)</th>
+                                <th class="text-center text-xs font-semibold text-gray-500 py-2.5 px-3 sticky top-0 bg-white">Tipo</th>
+                                <th class="text-center text-xs font-semibold text-gray-500 py-2.5 px-3 sticky top-0 bg-white">Posto coberto?</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr class="border-b border-gray-50 hover:bg-gray-50">
+                                <td class="py-2.5 px-3 text-sm font-medium text-gray-800">Carlos M. Souza</td>
+                                <td class="py-2.5 px-3 text-xs text-gray-600">Portaria Principal - Petrobras</td>
+                                <td class="py-2.5 px-3 text-center"><span class="text-xs font-semibold bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">A (06-14h)</span></td>
+                                <td class="py-2.5 px-3 text-center"><span class="text-sm font-bold text-red-600">4</span></td>
+                                <td class="py-2.5 px-3 text-center"><span class="text-xs font-semibold bg-red-100 text-red-700 px-2 py-0.5 rounded-full">Injustificada</span></td>
+                                <td class="py-2.5 px-3 text-center"><span class="text-xs font-semibold bg-red-100 text-red-700 px-2 py-0.5 rounded-full">Nao</span></td>
+                            </tr>
+                            <tr class="border-b border-gray-50 hover:bg-gray-50">
+                                <td class="py-2.5 px-3 text-sm font-medium text-gray-800">Ana R. Ferreira</td>
+                                <td class="py-2.5 px-3 text-xs text-gray-600">Sala Controle B - Vale</td>
+                                <td class="py-2.5 px-3 text-center"><span class="text-xs font-semibold bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">A (06-14h)</span></td>
+                                <td class="py-2.5 px-3 text-center"><span class="text-sm font-bold text-red-600">3</span></td>
+                                <td class="py-2.5 px-3 text-center"><span class="text-xs font-semibold bg-red-100 text-red-700 px-2 py-0.5 rounded-full">Injustificada</span></td>
+                                <td class="py-2.5 px-3 text-center"><span class="text-xs font-semibold bg-red-100 text-red-700 px-2 py-0.5 rounded-full">Nao</span></td>
+                            </tr>
+                            <tr class="border-b border-gray-50 hover:bg-gray-50">
+                                <td class="py-2.5 px-3 text-sm font-medium text-gray-800">Bruno T. Rocha</td>
+                                <td class="py-2.5 px-3 text-xs text-gray-600">Recepcao Bloco C - Itau</td>
+                                <td class="py-2.5 px-3 text-center"><span class="text-xs font-semibold bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">A (06-14h)</span></td>
+                                <td class="py-2.5 px-3 text-center"><span class="text-sm font-bold text-yellow-600">2</span></td>
+                                <td class="py-2.5 px-3 text-center"><span class="text-xs font-semibold bg-red-100 text-red-700 px-2 py-0.5 rounded-full">Injustificada</span></td>
+                                <td class="py-2.5 px-3 text-center"><span class="text-xs font-semibold bg-red-100 text-red-700 px-2 py-0.5 rounded-full">Nao</span></td>
+                            </tr>
+                            <tr class="border-b border-gray-50 hover:bg-gray-50">
+                                <td class="py-2.5 px-3 text-sm font-medium text-gray-800">Rodrigo S. Nunes</td>
+                                <td class="py-2.5 px-3 text-xs text-gray-600">Guarita Leste - JBS</td>
+                                <td class="py-2.5 px-3 text-center"><span class="text-xs font-semibold bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full">B (14-22h)</span></td>
+                                <td class="py-2.5 px-3 text-center"><span class="text-sm font-bold text-red-600">5</span></td>
+                                <td class="py-2.5 px-3 text-center"><span class="text-xs font-semibold bg-red-100 text-red-700 px-2 py-0.5 rounded-full">Injustificada</span></td>
+                                <td class="py-2.5 px-3 text-center"><span class="text-xs font-semibold bg-red-100 text-red-700 px-2 py-0.5 rounded-full">Nao</span></td>
+                            </tr>
+                            <tr class="border-b border-gray-50 hover:bg-gray-50">
+                                <td class="py-2.5 px-3 text-sm font-medium text-gray-800">Sandra M. Pereira</td>
+                                <td class="py-2.5 px-3 text-xs text-gray-600">Limpeza Piso 12 - B3</td>
+                                <td class="py-2.5 px-3 text-center"><span class="text-xs font-semibold bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">A (06-14h)</span></td>
+                                <td class="py-2.5 px-3 text-center"><span class="text-sm font-bold text-yellow-600">1</span></td>
+                                <td class="py-2.5 px-3 text-center"><span class="text-xs font-semibold bg-red-100 text-red-700 px-2 py-0.5 rounded-full">Injustificada</span></td>
+                                <td class="py-2.5 px-3 text-center"><span class="text-xs font-semibold bg-red-100 text-red-700 px-2 py-0.5 rounded-full">Nao</span></td>
+                            </tr>
+                            <tr class="border-b border-gray-50 hover:bg-gray-50">
+                                <td class="py-2.5 px-3 text-sm font-medium text-gray-800">Thiago L. Mendes</td>
+                                <td class="py-2.5 px-3 text-xs text-gray-600">Manutencao Eletrica - Ambev</td>
+                                <td class="py-2.5 px-3 text-center"><span class="text-xs font-semibold bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">A (06-14h)</span></td>
+                                <td class="py-2.5 px-3 text-center"><span class="text-sm font-bold text-red-600">3</span></td>
+                                <td class="py-2.5 px-3 text-center"><span class="text-xs font-semibold bg-red-100 text-red-700 px-2 py-0.5 rounded-full">Injustificada</span></td>
+                                <td class="py-2.5 px-3 text-center"><span class="text-xs font-semibold bg-red-100 text-red-700 px-2 py-0.5 rounded-full">Nao</span></td>
+                            </tr>
+                            <tr class="border-b border-gray-50 hover:bg-gray-50 bg-green-50/30">
+                                <td class="py-2.5 px-3 text-sm font-medium text-gray-800">Patricia A. Lima</td>
+                                <td class="py-2.5 px-3 text-xs text-gray-600">Recepcao - Natura</td>
+                                <td class="py-2.5 px-3 text-center"><span class="text-xs font-semibold bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">A (06-14h)</span></td>
+                                <td class="py-2.5 px-3 text-center"><span class="text-sm font-bold text-gray-600">1</span></td>
+                                <td class="py-2.5 px-3 text-center"><span class="text-xs font-semibold bg-green-100 text-green-700 px-2 py-0.5 rounded-full">Atestado</span></td>
+                                <td class="py-2.5 px-3 text-center"><span class="text-xs font-semibold bg-green-100 text-green-700 px-2 py-0.5 rounded-full">Sim</span></td>
+                            </tr>
+                            <tr class="border-b border-gray-50 hover:bg-gray-50 bg-green-50/30">
+                                <td class="py-2.5 px-3 text-sm font-medium text-gray-800">Marcelo R. Dias</td>
+                                <td class="py-2.5 px-3 text-xs text-gray-600">Almoxarifado - Embraer</td>
+                                <td class="py-2.5 px-3 text-center"><span class="text-xs font-semibold bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">A (06-14h)</span></td>
+                                <td class="py-2.5 px-3 text-center"><span class="text-sm font-bold text-gray-600">1</span></td>
+                                <td class="py-2.5 px-3 text-center"><span class="text-xs font-semibold bg-green-100 text-green-700 px-2 py-0.5 rounded-full">Atestado</span></td>
+                                <td class="py-2.5 px-3 text-center"><span class="text-xs font-semibold bg-green-100 text-green-700 px-2 py-0.5 rounded-full">Sim</span></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Horas Extras — Top por Cliente -->
+            <div class="card p-5">
+                <h3 class="text-base font-bold text-gray-800 mb-4">Horas Extras — Top por Cliente</h3>
+                <div style="height: 280px;">
+                    <canvas id="heClienteChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <footer class="max-w-[1440px] mx-auto px-6 py-4 text-center">
+        <p class="text-xs text-gray-400">RH Analytics 2025 — Dados atualizados em tempo real</p>
+    </footer>
+
+    <script>
+        const now = new Date();
+        document.getElementById('currentDate').textContent = now.toLocaleDateString('pt-BR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+        document.getElementById('updateTime').textContent = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+
+        Chart.defaults.font.family = 'Inter';
+        Chart.defaults.plugins.legend.labels.usePointStyle = true;
+        Chart.defaults.plugins.legend.labels.pointStyle = 'circle';
+        Chart.defaults.plugins.tooltip.backgroundColor = '#1f2937';
+        Chart.defaults.plugins.tooltip.cornerRadius = 8;
+        Chart.defaults.plugins.tooltip.padding = 12;
+
+        // Heatmap
+        const units = ['Petrobras SP','Vale RJ','Ambev MG','JBS GO','Itau SP','Bradesco PR','Mag. Luiza SC','Natura SP','B3 SP','Embraer SP'];
+        const heatData = [
+            [0.5,0.8,1.2,0.3,0.7,2.1,1.5],
+            [1.3,2.1,1.8,2.5,1.1,3.2,2.8],
+            [0.8,0.5,0.9,1.1,0.6,1.8,1.2],
+            [3.5,4.2,2.8,3.1,4.5,5.8,3.9],
+            [0.9,1.2,0.7,0.8,1.0,2.0,1.4],
+            [1.5,1.8,2.2,1.9,1.3,2.5,2.0],
+            [2.8,3.1,2.5,3.4,2.9,4.1,3.5],
+            [0.4,0.6,0.3,0.5,0.7,1.2,0.8],
+            [1.1,1.4,1.0,1.3,0.9,2.3,1.7],
+            [0.7,0.9,1.1,0.8,0.6,1.5,1.0]
+        ];
+        function getHeatColor(v) {
+            if (v < 1) return '#dcfce7';
+            if (v < 2) return '#86efac';
+            if (v < 4) return '#fde68a';
+            if (v < 6) return '#fca5a5';
+            return '#ef4444';
+        }
+        const tbody = document.getElementById('heatmapBody');
+        units.forEach((unit, i) => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `<td class="text-xs font-medium text-gray-700 py-1.5 pr-3 whitespace-nowrap">${unit}</td>` +
+                heatData[i].map(v => `<td class="p-1"><div class="heatmap-cell flex items-center justify-center text-xs font-semibold" style="background:${getHeatColor(v)};color:${v >= 4 ? '#fff' : '#374151'}" title="${v}%">${v.toFixed(1)}%</div></td>`).join('');
+            tbody.appendChild(tr);
+        });
+
+        // Top 10 HE
+        new Chart(document.getElementById('heChart'), {
+            type: 'bar',
+            data: {
+                labels: ['J. Ferreira','M. Santos','A. Lima','C. Ribeiro','P. Alves','R. Gomes','L. Nunes','F. Martins','D. Costa','B. Rocha'],
+                datasets: [{
+                    label: 'Horas',
+                    data: [67, 58, 52, 48, 45, 43, 41, 39, 37, 35],
+                    backgroundColor: (ctx) => {
+                        const v = ctx.parsed.y;
+                        if (v > 55) return '#ef4444';
+                        if (v > 45) return '#f59e0b';
+                        return '#2563eb';
+                    },
+                    borderRadius: 6,
+                    borderSkipped: false
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                indexAxis: 'y',
+                plugins: {
+                    legend: { display: false },
+                    tooltip: { callbacks: { label: ctx => `${ctx.parsed.x}h extras no mes` } }
+                },
+                scales: {
+                    x: { grid: { color: '#f3f4f6' }, ticks: { callback: v => v + 'h' } },
+                    y: { grid: { display: false } }
+                }
+            }
+        });
+
+        // HE por Posto de Trabalho
+        const postosLabels = [
+            'Portaria A — Petrobras SP','Recepcao — Itau SP','Vigilancia — Vale RJ',
+            'Limpeza — Ambev MG','Manutencao — JBS GO','Portaria B — Bradesco PR',
+            'Vigilancia — Natura SP','Operacional — Embraer SP','Limpeza — B3 SP',
+            'Portaria — Mag. Luiza SC','Recepcao — Petrobras RJ','Manutencao — Itau SP',
+            'Vigilancia — Ambev MG','Operacional — JBS GO','Limpeza — Vale RJ'
+        ];
+        const heMesData = [186, 172, 158, 145, 140, 132, 128, 122, 118, 112, 105, 98, 92, 88, 82];
+        const heSemanaData = [48, 44, 41, 38, 36, 34, 33, 31, 30, 28, 27, 25, 23, 22, 20];
+
+        function getHEColor(v, max) {
+            const ratio = v / max;
+            if (ratio > 0.8) return '#ef4444';
+            if (ratio > 0.6) return '#f59e0b';
+            if (ratio > 0.4) return '#3b82f6';
+            return '#10b981';
+        }
+
+        let hePostoChart = new Chart(document.getElementById('hePostoChart'), {
+            type: 'bar',
+            data: {
+                labels: postosLabels,
+                datasets: [{
+                    label: 'Horas Extras',
+                    data: heMesData,
+                    backgroundColor: heMesData.map(v => getHEColor(v, Math.max(...heMesData))),
+                    borderRadius: 6,
+                    borderSkipped: false,
+                    barThickness: 20
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                indexAxis: 'y',
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: ctx => `${ctx.parsed.x}h extras`
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        grid: { color: '#f3f4f6' },
+                        ticks: { callback: v => v + 'h' }
+                    },
+                    y: {
+                        grid: { display: false },
+                        ticks: { font: { size: 10 } }
+                    }
+                }
+            }
+        });
+
+        function updateHEPeriod(period) {
+            const data = period === 'mes' ? heMesData : heSemanaData;
+            const max = Math.max(...data);
+            hePostoChart.data.datasets[0].data = data;
+            hePostoChart.data.datasets[0].backgroundColor = data.map(v => getHEColor(v, max));
+            hePostoChart.update();
+
+            document.getElementById('btnMes').className = period === 'mes'
+                ? 'px-3 py-1 text-xs font-medium bg-blue-50 text-blue-600 rounded-lg'
+                : 'px-3 py-1 text-xs font-medium text-gray-400 hover:bg-gray-50 rounded-lg';
+            document.getElementById('btnSemana').className = period === 'semana'
+                ? 'px-3 py-1 text-xs font-medium bg-blue-50 text-blue-600 rounded-lg'
+                : 'px-3 py-1 text-xs font-medium text-gray-400 hover:bg-gray-50 rounded-lg';
+        }
+
+        // Custo HE por Posto
+        const custoPosto = [28400, 25800, 23200, 21500, 20100, 19200, 18600, 17800, 17100, 16200, 15400, 14200, 13500, 12800, 11900];
+        new Chart(document.getElementById('heCustoPostoChart'), {
+            type: 'bar',
+            data: {
+                labels: postosLabels,
+                datasets: [{
+                    label: 'Custo H.E.',
+                    data: custoPosto,
+                    backgroundColor: custoPosto.map(v => {
+                        if (v > 24000) return '#ef4444';
+                        if (v > 18000) return '#f59e0b';
+                        if (v > 14000) return '#3b82f6';
+                        return '#10b981';
+                    }),
+                    borderRadius: 6,
+                    borderSkipped: false,
+                    barThickness: 20
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                indexAxis: 'y',
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: ctx => `R$ ${ctx.parsed.x.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        grid: { color: '#f3f4f6' },
+                        ticks: { callback: v => 'R$ ' + (v/1000).toFixed(0) + 'k' }
+                    },
+                    y: {
+                        grid: { display: false },
+                        ticks: { font: { size: 10 } }
+                    }
+                }
+            }
+        });
+        // HE por Cliente
+        new Chart(document.getElementById('heClienteChart'), {
+            type: 'bar',
+            data: {
+                labels: ['Petrobras','Vale','JBS','Ambev','Itau','Bradesco'],
+                datasets: [{
+                    label: 'Horas Extras (h)',
+                    data: [87, 65, 52, 43, 38, 32],
+                    backgroundColor: ctx => {
+                        const v = ctx.parsed.x;
+                        if (v > 70) return '#ef4444';
+                        if (v > 45) return '#f59e0b';
+                        return '#2563eb';
+                    },
+                    borderRadius: 6, borderSkipped: false
+                }]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false, indexAxis: 'y',
+                plugins: {
+                    legend: { display: false },
+                    tooltip: { callbacks: { label: ctx => `${ctx.parsed.x}h extras hoje` } }
+                },
+                scales: {
+                    x: { grid: { color: '#f3f4f6' }, ticks: { callback: v => v + 'h' } },
+                    y: { grid: { display: false } }
+                }
+            }
+        });
+    </script>
+</body>
+</html>
